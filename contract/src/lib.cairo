@@ -194,7 +194,7 @@ mod KolEscrow {
         let n = inputs.len();
         let mut i = 0;
         let mut acc: felt252 = n.into();
-        while i < n {
+        while i != n {
             acc = pedersen(acc, *inputs.at(i));
             i = i + 1;
         }
