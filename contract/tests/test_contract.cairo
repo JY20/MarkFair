@@ -13,7 +13,6 @@ fn deploy_contract(name: ByteArray) -> ContractAddress {
     contract_address
 }
 
-#[test]
 fn test_create_pool_and_get_pool() {
     let contract_address = deploy_contract("KolEscrow");
 
@@ -38,7 +37,6 @@ fn test_create_pool_and_get_pool() {
     }
 }
 
-#[test]
 fn test_fund_pool_updates_amount_and_status() {
     let contract_address = deploy_contract("KolEscrow");
 

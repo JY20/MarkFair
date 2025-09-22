@@ -90,3 +90,6 @@ cache/
 
 # Local blockchain
 ganache-db/
+
+# contract instructions
+contract/instructions/
