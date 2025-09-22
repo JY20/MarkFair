@@ -5,8 +5,14 @@ version = 1
 name = "contract"
 version = "0.1.0"
 dependencies = [
+ "openzeppelin_merkle_tree",
  "snforge_std_deprecated",
 ]
+
+[[package]]
+name = "openzeppelin_merkle_tree"
+version = "3.0.0-alpha.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v3.0.0-alpha.0#8023c19f0235b702d9d1729937690a655a98fb59"
 
 [[package]]
 name = "snforge_scarb_plugin_deprecated"
