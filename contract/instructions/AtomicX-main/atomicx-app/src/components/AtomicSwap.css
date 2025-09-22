@@ -1,0 +1,207 @@
+.atomic-swap {
+  padding: 5rem 1rem;
+  background-color: #000;
+}
+
+.section-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.atomic-swap h2 {
+  font-size: 2.5rem;
+  color: #fff;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.atomic-swap h3 {
+  font-size: 1.8rem;
+  color: #fff;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.swap-process {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 3rem;
+  gap: 1.5rem;
+}
+
+.user-flow {
+  flex: 1;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+.user-flow h4 {
+  font-size: 1.4rem;
+  color: #fff;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #444;
+}
+
+.process-step {
+  display: flex;
+  margin-bottom: 1.5rem;
+  background-color: #111;
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(255, 255, 255, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.process-step:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(255, 255, 255, 0.1);
+}
+
+.step-number {
+  background: #fff;
+  color: #000;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-right: 1rem;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-content p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+.step-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  color: #ccc;
+}
+
+.step-content li {
+  margin-bottom: 0.3rem;
+}
+
+.highlight {
+  color: #fff;
+  font-weight: 600;
+}
+
+.swap-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem;
+}
+
+.divider-line {
+  height: 100px;
+  width: 2px;
+  background-color: #444;
+}
+
+.swap-icon {
+  background: #fff;
+  color: #000;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin: 1rem 0;
+}
+
+.fallback-scenario {
+  background-color: #222;
+  border-left: 4px solid #666;
+  padding: 1.5rem;
+  margin-bottom: 3rem;
+  border-radius: 0 5px 5px 0;
+}
+
+.fallback-scenario h4 {
+  color: #ccc;
+  margin-bottom: 0.5rem;
+}
+
+.fallback-scenario p {
+  color: #ccc;
+  margin: 0;
+}
+
+.architecture {
+  background-color: #111;
+  border-radius: 10px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(255, 255, 255, 0.05);
+}
+
+.architecture h3 {
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+.architecture-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.architecture-section {
+  flex: 1;
+  min-width: 300px;
+}
+
+.architecture-section h4 {
+  color: #fff;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+
+.architecture-section ul {
+  padding-left: 1.5rem;
+  margin: 0;
+  color: #ccc;
+}
+
+.architecture-section li {
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .swap-process {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .swap-divider {
+    flex-direction: row;
+    width: 100%;
+    padding: 1rem 0;
+  }
+  
+  .divider-line {
+    height: 2px;
+    width: 100px;
+  }
+  
+  .architecture-content {
+    flex-direction: column;
+  }
+} 

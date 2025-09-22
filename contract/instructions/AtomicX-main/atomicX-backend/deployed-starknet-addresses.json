@@ -1,0 +1,9 @@
+{
+  "htlcContract": "0xa69c1661b6d13",
+  "classHash": "0x767a554f70e21",
+  "network": "sepolia",
+  "deployedAt": "2025-08-01T05:43:52.792Z",
+  "deployer": "0x034C8aC9569c66B494671220fc5C7743c34bb320866B68Bc93F3d9958A6E1966",
+  "transactionHash": "0x775e5ade85046",
+  "note": "This is a placeholder deployment. Follow the instructions below for actual deployment."
+}

@@ -1,0 +1,8 @@
+{
+  "oneInchWrapper": "0x5633F8a3FeFF2E8F615CbB17CC29946a51BaEEf9",
+  "network": "sepolia",
+  "deployedAt": "2025-08-02T01:31:02.043Z",
+  "deployer": "0x2d0fe904E22213b75C1Da0B29E604202FAb8e60E",
+  "blockNumber": 8893307,
+  "note": "This wrapper integrates with 1inch Limit Order Protocol for atomic swaps"
+}

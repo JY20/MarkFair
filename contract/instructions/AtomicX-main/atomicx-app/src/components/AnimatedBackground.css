@@ -1,0 +1,61 @@
+.animated-background {
+  display: flex;
+  height: 100vh;
+  background-color: #111;
+  position: relative;
+  overflow: hidden;
+  margin-top: -70px; /* Account for navbar height */
+  padding-top: 70px; /* Add padding to prevent content from being hidden behind navbar */
+}
+
+.animated-background canvas {
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60%;
+  height: 100%;
+  z-index: 1;
+}
+
+
+
+.hero-text {
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  transform: translate(-50%, -50%);
+  text-align: left;
+  z-index: 3;
+  color: #ffffff;
+  font-family: 'Archivo', sans-serif;
+}
+
+.hero-text h1 {
+  font-size: 3.5rem;
+  font-weight: 900;
+  margin: 0;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .animated-background canvas {
+    width: 100%;
+    right: 0;
+  }
+  
+  .hero-text {
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  
+  .hero-text h1 {
+    font-size: 1.8rem;
+    white-space: normal;
+    line-height: 1.3;
+  }
+} 
