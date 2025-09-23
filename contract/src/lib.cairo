@@ -1,3 +1,5 @@
+mod mark_token;
+
 #[derive(Copy, Drop, Serde, starknet::Store)]
 pub struct PoolInfo {
     brand: starknet::ContractAddress,

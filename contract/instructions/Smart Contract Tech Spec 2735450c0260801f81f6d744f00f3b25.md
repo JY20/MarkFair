@@ -150,7 +150,9 @@ const E_NO_BALANCE: u32          = 13;
 - **Merkle**：建议 **Poseidon** 哈希；叶编码固定：
   `leaf = Poseidon(pool_id, index, account, shares)`（定长定序，防拼接歧义；`shares` 为 u256）。
 - **Finalize 双签**：
+
   - 消息：
+
     ```
     msg = Poseidon(
       domain_separator,
@@ -161,6 +163,7 @@ const E_NO_BALANCE: u32          = 13;
     )
 
     ```
+
   - **brand_sig**：由 `pools[pool_id].brand_pubkey` 验证；
   - **attestor_sig**：由 `pools[pool_id].attestor_pubkey` 验证；
   - 合约还校验 `block_timestamp <= deadline_ts`（防过期签名）。
@@ -433,47 +436,110 @@ refund_remaining(pool_id, to)
 
 **结论**：该合约以 **“托管资金 + Merkle 根 + 双签 finalize + O(log N) 领取 + 到期退款”** 为核心，满足你对 **最终清算、顺序无关、公平按份额发放** 的 MVP 诉求，链上最小逻辑、链下可扩展计算，实施难度低、审计面小、上线快。
 
-## Update (Aligned with current implementation)
+## Update (Aligned with repo code – ready for FE/BE integration)
 
-- Merkle Hash
+### 0. Addresses & Artifacts (Devnet)
 
-  - Switched to OpenZeppelin pedersen-based verification on-chain (openzeppelin_merkle_tree::merkle_proof::verify_pedersen)。
-  - Leaf serialization (felt252 list, pedersen_hash_many with len-prefix, chain order):
-    - [LEAF_TAG, contract_address,
-      pool_id.low, pool_id.high,
-      epoch_id,
-      index.low, index.high,
-      account,
-      shares.low, shares.high,
-      amount.low, amount.high]
+- RPC: `http://127.0.0.1:5050`
+- KolEscrow: `0x02902f77f57a067062446751e1d1b0b2600cacdf3b54e73377fd57fb037c7b5e`
+- MARK (ERC20): `0x051f71350f42f28d151e57633b38abbda5e7a946fe087eab51e653545d1e7569`
+- ABI: `contract/target/dev/contract.starknet_artifacts.json`
 
-- Domain-separated Finalize Message (Pedersen)
+### 1. Storage & State (final)
 
-  - Hash computed on-chain as:
-    - domain_hash_finalize_v2(
-      pool_id, epoch_id, merkle_root, total_shares, unit_k, deadline_ts, nonce)
-  - Fields included: contract_address, pool_id(low/high), epoch_id, merkle_root, total_shares(low/high), unit_k(low/high), deadline_ts, nonce。
-  - Nonce per (pool) for v1 finalize_pool；per (pool, epoch) for finalize_epoch，防重放。
+- PoolInfo: brand, token, status, funded_amount, total_claimed_amount, current_epoch, allocated_shares, unit_k, merkle_root, deadline_ts, refund_after_ts
+- EpochMeta: merkle_root, total_shares, unit_k, deadline_ts, refund_after_ts, claimed_amount, status
+- Maps:
+  - pools: `Map<u256, PoolInfo>`
+  - epoch_meta: `Map<(u256, u64), EpochMeta>`
+  - claimed_epoch: `Map<(u256, u64, u256), bool>`
+  - finalize_nonce_v1: `Map<u256, u64>`
+  - finalize_nonce_v2: `Map<(u256, u64), u64>`
+- Global: owner, paused, reentrancy_guard
 
-- Signatures (ECDSA over Stark curve)
+### 2. ABI (extern/view) – 参数均为 Cairo 语义
 
-  - Both finalize_pool (epoch=0) and finalize_epoch require a valid signature over the domain hash:
-    - assert(ecdsa_verify(expected_hash, attestor_pubkey, r, s))。
-  - Optionally keep msg_hash consistency check (msg_hash == expected_hash) for debugging/observability；当前实现保留。
+- Admin
+  - `pause(flag: bool)` onlyOwner
+- Pool
+  - `create_pool(pool_id:u256, brand:address, token:address, attester_pubkey:felt, deadline_ts:u64, refund_after_ts:u64)`
+  - `fund_pool(pool_id:u256, amount:u256)`
+  - `finalize_pool(pool_id:u256, merkle_root:felt, total_shares:u256, unit_k:u256, deadline_ts:u64, msg_hash:felt, sig_r:felt, sig_s:felt)`
+  - `claim(pool_id:u256, index:u256, account:address, shares:u256, amount:u256, proof:felt[])`
+  - `refund_and_close(pool_id:u256, to:address)`
+  - Getters: `get_pool`, `preview_amount(pool_id, shares)`, `get_pool_status/get_pool_funded/get_pool_brand/get_pool_token`
+- ERC20 集成
+  - `fund_pool_with_transfer(pool_id:u256, token:address, from:address, amount:u256)`
+  - `claim_with_transfer(pool_id:u256, index:u256, account:address, shares:u256, amount:u256, proof:felt[])`（内部路由 epoch=0）
+  - `refund_and_close_with_transfer(pool_id:u256, to:address)`
+- Epoch
+  - `finalize_epoch(pool_id:u256, epoch:u64, merkle_root:felt, total_shares:u256, unit_k:u256, deadline_ts:u64, msg_hash:felt, r:felt, s:felt)`
+  - `claim_epoch_with_transfer(pool_id:u256, epoch:u64, index:u256, account:address, shares:u256, amount:u256, proof:felt[])`
+  - `refund_and_close_epoch(pool_id:u256, epoch:u64, to:address)`
 
-- ABI Adjustments
+说明：
 
-  - claim(pool_id, index, account, shares, proof): 增加 shares 与 proof，链上计算 amount = unit_k \* shares，并校验 Merkle（pedersen）。
-  - claim_with_transfer 路由到 epoch=0 的安全路径（与 claim_epoch_with_transfer 逻辑一致）。
-  - 新增：finalize_epoch/claim_epoch_with_transfer/refund_and_close_epoch，事件 EpochFinalized/ClaimedEpoch/RefundEpoch。
+- u256 以 `[low, high]` 传参；address 用 `ContractAddress` felt 表示。
+- `claim_with_transfer` 与 `claim_epoch_with_transfer` 均需合约已持有足额 token。
 
-- Refund Calculation (epoch)
+### 3. 事件 (统一)
 
-  - remaining = total_shares \* unit_k - claimed_amount（当前版本限制高位为 0，以避免 u256 乘法库缺失；后续将替换为完整 u256 乘法）。
+- PoolCreated, PoolFunded(delta,total), PoolFinalized
+- FundsIn(from, token, amount), FundsOut(to, token, amount)
+- Claimed(index, account, shares, amount)
+- EpochFinalized(pool_id, epoch, ...)
+- ClaimedEpoch(pool_id, epoch, index, account, shares, amount)
+- Refund, RefundEpoch
 
-- Security Alignment
-  - OnlyOwner + Pausable 已启用。
-  - Nonce per finalize scope（pool / (pool,epoch)）。
-  - Merkle proof 验证由 OZ pedersen 提供。
+### 4. 错误码（短字符串 felt）
 
-以上内容已在 `contract/src/lib.cairo` 实现并通过构建，链下（FastAPI/脚本）需按本规范构造 leaf/proof 与域哈希进行签名（Stark 曲线）。
+- `PAUSED/NOT_OWNER/NO_POOL/POOL_EXISTS/BAD_STATUS/ALREADY/DEADLINE/NOT_YET/OVERFLOW/UNDERFLOW/BAD_TOKEN/BAD_BRAND/BAD_REFUND_TIME/BAD_UNIT/BAD_SHARES/REENTRANT/TFRM_FAIL/TFROUT_FAIL/BAD_SIG/BAD_PROOF/BAD_AMOUNT`
+
+### 5. Merkle（OZ pedersen）与叶子序列化
+
+- 库：`openzeppelin_merkle_tree::merkle_proof::verify_pedersen`
+- 叶：`LEAF_TAG='KOL_LEAF_V1'`
+- 序列化顺序（felt 数组，len 前缀 pedersen_hash_many）：
+  - `[LEAF_TAG, contract_address, pool_id.low, pool_id.high, epoch_id, index.low, index.high, account, shares.low, shares.high, amount.low, amount.high]`
+- 前端/后端构树：内部节点使用排序配对 + Pedersen（commutative）
+
+### 6. 域哈希与签名（Stark 曲线 ECDSA）
+
+- 域哈希：`domain_hash_finalize_v2(pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts, nonce)`
+- nonce：`finalize_nonce_v1[pool_id]` 或 `finalize_nonce_v2[(pool_id,epoch)]`
+- 校验：
+  - 合约内计算 expected；要求 `msg_hash==expected`
+  - `assert(ecdsa_verify(expected, attester_pubkey, r, s))`
+  - `r/s != 0` 基本断言
+
+### 7. 金额计算与一致性
+
+- 领取金额：`amount = shares * unit_k`
+- 约束：当前实现限制 `shares.high==0` 与 `unit_k.high==0`，并使用 64x64→128 精确乘法；`preview_amount` 与领取、退款一致。
+- 记账顺序：先写 `claimed_epoch/claimed_amount/total_claimed_amount`，再转账；所有转账在重入保护下。
+
+### 8. FE/BE 快速集成
+
+- 读：`get_pool_status/funded/brand/token`、`get_pool(pool_id)`（Option）
+- 写：
+  - 资金：`approve(token, escrow, amount)` → `fund_pool_with_transfer(pool_id, token, brand, amount)`
+  - finalize(pool)：计算 expected + 签名后调用 `finalize_pool`
+  - finalize(epoch)：同上，包含 `epoch`
+  - claim(epoch)：构造 leaf 与 proof 调用 `claim_epoch_with_transfer`
+- 参数打包
+  - u256 => `[low, high]`
+  - proof => `felt[]`
+- 事件订阅：监听 `FundsIn/FundsOut/PoolFinalized/EpochFinalized/ClaimedEpoch/RefundEpoch`
+
+### 9. Devnet 命令（示例）
+
+- 导入账户：`sncast account import --address=<devnet_account> --type=oz --url=http://127.0.0.1:5050 --private-key=<pk> --add-profile=devnet`
+- 声明/部署：`sncast --profile=devnet declare --contract-name=KolEscrow` → `sncast --profile=devnet deploy --class-hash=<hash> --salt=0`
+- 代币：`MarkToken` 已部署；`approve` → `fund_pool_with_transfer` → `get_pool_funded`
+
+### 10. 约束与后续
+
+- 精确乘法将升级为通用 u256 乘法库（移除高位限制）
+- 测试将补充：失败路径、nonce 重放、ERC20 异常分支
+
+以上条目与 `contract/src/lib.cairo` 一致，可直接用于 FE/BE 联调。

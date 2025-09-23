@@ -8,6 +8,7 @@ edition = "2024_07"
 [dependencies]
 starknet = "2.11.4"
 openzeppelin_merkle_tree = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v3.0.0-alpha.0", subdir = "crates/merkle_tree" }
+openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v3.0.0-alpha.0", subdir = "crates/token" }
 
 [dev-dependencies]
 snforge_std_deprecated = "0.48.1"
