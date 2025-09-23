@@ -5,23 +5,13 @@ pub struct PoolInfo {
     attester_pubkey: felt252,
     status: u8,
     funded_amount: core::integer::u256,
+    total_claimed_amount: core::integer::u256,
+    current_epoch: u64,
     allocated_shares: core::integer::u256,
     unit_k: core::integer::u256,
     merkle_root: felt252,
     deadline_ts: u64,
     refund_after_ts: u64,
-    total_claimed_amount: core::integer::u256,
-}
-
-#[derive(Copy, Drop, Serde, starknet::Store)]
-pub struct PoolInfoV2 {
-    brand: starknet::ContractAddress,
-    token: starknet::ContractAddress,
-    attester_pubkey: felt252,
-    status: u8,
-    funded_amount: core::integer::u256,
-    total_claimed_amount: core::integer::u256,
-    current_epoch: u64,
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
@@ -97,7 +87,9 @@ pub trait IKolEscrow<TContractState> {
         pool_id: core::integer::u256,
         index: core::integer::u256,
         account: starknet::ContractAddress,
+        shares: core::integer::u256,
         amount: core::integer::u256,
+        proof: core::array::Span<felt252>,
     );
 
     fn refund_and_close_with_transfer(ref self: TContractState, pool_id: core::integer::u256, to: starknet::ContractAddress);
@@ -149,6 +141,7 @@ mod KolEscrow {
         StoragePointerReadAccess, StoragePointerWriteAccess, StorageMapReadAccess, StorageMapWriteAccess,
     };
     use core::pedersen::pedersen;
+    use core::ecdsa::check_ecdsa_signature as ecdsa_verify;
     use openzeppelin_merkle_tree::merkle_proof::verify_pedersen;
 
     // -------- Error constants (felt shortstrings) --------
@@ -170,11 +163,15 @@ mod KolEscrow {
     const ERR_REENTRANT: felt252 = 'REENTRANT';
     const ERR_TFROM_FAIL: felt252 = 'TFRM_FAIL';
     const ERR_TOUT_FAIL: felt252 = 'TFROUT_FAIL';
+    const ERR_BAD_SIG: felt252 = 'BAD_SIG';
 
     const STATUS_CREATED: u8 = 1_u8;
     const STATUS_FUNDED: u8 = 2_u8;
     const STATUS_FINALIZED: u8 = 3_u8;
     const STATUS_CLOSED: u8 = 4_u8;
+
+    // 64 位阈值（用于 128x128->256 的精确乘法在 64x64 情况下无溢出）
+    const MAX_U64: u128 = 18446744073709551615_u128;
 
     #[storage]
     struct Storage {
@@ -185,9 +182,11 @@ mod KolEscrow {
         owner: ContractAddress,
         reentrancy_guard: bool,
         // V2: epoch data
-        pools_v2: Map<u256, super::PoolInfoV2>,
+        // 统一使用 pools
         epoch_meta: Map<(u256, u64), super::EpochMeta>,
         claimed_epoch: Map<(u256, u64, u256), bool>,
+        finalize_nonce_v1: Map<u256, u64>,
+        finalize_nonce_v2: Map<(u256, u64), u64>,
     }
 
     fn pedersen_hash_many(inputs: Span<felt252>) -> felt252 {
@@ -199,6 +198,15 @@ mod KolEscrow {
             i = i + 1;
         }
         acc
+    }
+
+    // 128x128 -> 256 精确乘法（当前约束：两数均不超过 2^64-1）
+    // 返回 u256，其中 high 始终为 0，low 为 128 位结果。
+    fn mul_128x128_to_256_exact_low64(a: u128, b: u128) -> u256 {
+        assert(a <= MAX_U64, ERR_OVERFLOW);
+        assert(b <= MAX_U64, ERR_OVERFLOW);
+        let res_low: u128 = a * b; // 64x64 -> 128 位，精确无溢出
+        u256 { low: res_low, high: 0 }
     }
 
     const LEAF_TAG: felt252 = 'KOL_LEAF_V1';
@@ -221,6 +229,29 @@ mod KolEscrow {
         a.append((account.into()));
         a.append(shares.low.into()); a.append(shares.high.into());
         a.append(amount.low.into()); a.append(amount.high.into());
+        pedersen_hash_many(a.span())
+    }
+
+    fn domain_hash_finalize_v2(
+        pool_id: u256,
+        epoch: u64,
+        merkle_root: felt252,
+        total_shares: u256,
+        unit_k: u256,
+        deadline_ts: u64,
+        nonce: u64,
+    ) -> felt252 {
+        let mut a = ArrayTrait::new();
+        let ca: felt252 = starknet::get_contract_address().into();
+        a.append('KOL_FINALIZE_V1');
+        a.append(ca);
+        a.append(pool_id.low.into()); a.append(pool_id.high.into());
+        a.append(epoch.into());
+        a.append(merkle_root);
+        a.append(total_shares.low.into()); a.append(total_shares.high.into());
+        a.append(unit_k.low.into());       a.append(unit_k.high.into());
+        a.append(deadline_ts.into());
+        a.append(nonce.into());
         pedersen_hash_many(a.span())
     }
 
@@ -251,6 +282,54 @@ mod KolEscrow {
         a.append(deadline_ts.into());
         a.append(merkle_root);
         pedersen_hash_many(a.span())
+    }
+
+    // 无锁内部实现：统一的 epoch 领取路径
+    fn _claim_epoch_internal(
+        ref self: ContractState,
+        pool_id: u256,
+        epoch: u64,
+        index: u256,
+        account: ContractAddress,
+        shares: u256,
+        amount: u256,
+        proof: Span<felt252>,
+    ) {
+        let mut p: super::PoolInfo = self.pools.read(pool_id);
+        assert(p.status != 0_u8, ERR_NO_POOL);
+        let mut em: super::EpochMeta = self.epoch_meta.read((pool_id, epoch));
+        assert(em.status == 2_u8, ERR_BAD_STATUS);
+        let now = get_block_timestamp();
+        assert(now <= em.deadline_ts, ERR_DEADLINE);
+        if self.claimed_epoch.read((pool_id, epoch, index)) { assert(false, ERR_ALRDY); }
+
+            // 金额一致性：限制高位为0，使用 64x64->128 精确乘法
+        assert(shares.high == 0, ERR_BAD_SHARES);
+        assert(em.unit_k.high == 0, ERR_BAD_UNIT);
+            let expected = mul_128x128_to_256_exact_low64(shares.low, em.unit_k.low);
+        assert(amount == expected, 'BAD_AMOUNT');
+
+        let leaf = leaf_hash_pedersen(pool_id, epoch, index, account, shares, amount);
+        let ok = verify_pedersen(proof, em.merkle_root, leaf);
+        assert(ok, 'BAD_PROOF');
+
+        // 先写状态与累计
+        self.claimed_epoch.write((pool_id, epoch, index), true);
+        let (new_claimed_epoch, of1) = em.claimed_amount.overflowing_add(amount);
+        assert(!of1, ERR_OVERFLOW);
+        em.claimed_amount = new_claimed_epoch;
+        self.epoch_meta.write((pool_id, epoch), em);
+        let (new_total_claimed, of2) = p.total_claimed_amount.overflowing_add(amount);
+        assert(!of2, ERR_OVERFLOW);
+        p.total_claimed_amount = new_total_claimed;
+        self.pools.write(pool_id, p);
+
+        // 再转账
+        let erc20 = IERC20Dispatcher { contract_address: p.token };
+        let ok2 = erc20.transfer(account, amount);
+        assert(ok2, ERR_TOUT_FAIL);
+        self.emit(Event::ClaimedEpoch(ClaimedEpoch { pool_id, epoch, index, account, shares, amount }));
+        self.emit(Event::FundsOut(FundsOut { pool_id, to: account, token: p.token, amount }));
     }
 
     // -------- Events --------
@@ -333,20 +412,20 @@ mod KolEscrow {
 
     #[abi(embed_v0)]
     impl KolEscrowImpl of super::IKolEscrow<ContractState> {
-        fn pause(ref self: ContractState, flag: bool) {
+    fn pause(ref self: ContractState, flag: bool) {
             assert_only_owner(@self);
-            let caller = get_caller_address();
-            self.paused.write(flag);
-            self.emit(Event::Paused(Paused { by: caller, flag }));
-        }
+        let caller = get_caller_address();
+        self.paused.write(flag);
+        self.emit(Event::Paused(Paused { by: caller, flag }));
+    }
 
-        fn create_pool(
-            ref self: ContractState,
-            pool_id: u256,
-            brand: ContractAddress,
-            token: ContractAddress,
-            attester_pubkey: felt252,
-            deadline_ts: u64,
+    fn create_pool(
+        ref self: ContractState,
+        pool_id: u256,
+        brand: ContractAddress,
+        token: ContractAddress,
+        attester_pubkey: felt252,
+        deadline_ts: u64,
             refund_after_ts: u64,
         ) {
             assert(!self.paused.read(), ERR_PAUSED);
@@ -360,23 +439,25 @@ mod KolEscrow {
             assert(refund_after_ts > deadline_ts, ERR_BAD_TIME);
 
             let info = super::PoolInfo {
-                brand,
-                token,
-                attester_pubkey,
-                status: STATUS_CREATED,
-                funded_amount: u256 { low: 0, high: 0 },
-                allocated_shares: u256 { low: 0, high: 0 },
-                unit_k: u256 { low: 0, high: 0 },
-                merkle_root: 0,
-                deadline_ts,
-                refund_after_ts,
+            brand,
+            token,
+            attester_pubkey,
+            status: STATUS_CREATED,
+            funded_amount: u256 { low: 0, high: 0 },
                 total_claimed_amount: u256 { low: 0, high: 0 },
-            };
-            self.pools.write(pool_id, info);
-            self.emit(Event::PoolCreated(PoolCreated { pool_id, brand, token }));
-        }
+                current_epoch: 0_u64,
+            allocated_shares: u256 { low: 0, high: 0 },
+            unit_k: u256 { low: 0, high: 0 },
+            merkle_root: 0,
+            deadline_ts,
+            refund_after_ts,
+        };
+        self.pools.write(pool_id, info);
+            self.finalize_nonce_v1.write(pool_id, 0_u64);
+        self.emit(Event::PoolCreated(PoolCreated { pool_id, brand, token }));
+    }
 
-        fn fund_pool(ref self: ContractState, pool_id: u256, amount: u256) {
+    fn fund_pool(ref self: ContractState, pool_id: u256, amount: u256) {
             assert(!self.paused.read(), ERR_PAUSED);
             let mut p: super::PoolInfo = self.pools.read(pool_id);
             assert(p.status != 0_u8, ERR_NO_POOL);
@@ -384,23 +465,23 @@ mod KolEscrow {
 
             let (sum, overflow) = p.funded_amount.overflowing_add(amount);
             assert(!overflow, ERR_OVERFLOW);
-            p.funded_amount = sum;
+        p.funded_amount = sum;
 
             if p.status == STATUS_CREATED { p.status = STATUS_FUNDED; }
 
-            self.pools.write(pool_id, p);
-            self.emit(Event::PoolFunded(PoolFunded { pool_id, delta: amount, total: p.funded_amount }));
-        }
+        self.pools.write(pool_id, p);
+        self.emit(Event::PoolFunded(PoolFunded { pool_id, delta: amount, total: p.funded_amount }));
+    }
 
-        fn finalize_pool(
-            ref self: ContractState,
-            pool_id: u256,
-            merkle_root: felt252,
-            total_shares: u256,
-            unit_k: u256,
-            deadline_ts: u64,
-            msg_hash: felt252,
-            sig_r: felt252,
+    fn finalize_pool(
+        ref self: ContractState,
+        pool_id: u256,
+        merkle_root: felt252,
+        total_shares: u256,
+        unit_k: u256,
+        deadline_ts: u64,
+        msg_hash: felt252,
+        sig_r: felt252,
             sig_s: felt252,
         ) {
             assert_only_owner(@self);
@@ -414,28 +495,43 @@ mod KolEscrow {
             assert(unit_k > u256 { low: 0, high: 0 }, ERR_BAD_UNIT);
             let now = get_block_timestamp();
             assert(deadline_ts > now, 'BAD_DEADLINE');
-
-            // 域隔离消息哈希校验（签名验签后续接入）
-            let expected = domain_hash_finalize(pool_id, merkle_root, total_shares, unit_k, deadline_ts);
+            // 域哈希 + ECDSA 验签 + nonce
+            let nonce: u64 = self.finalize_nonce_v1.read(pool_id);
+            let expected = domain_hash_finalize_v2(pool_id, 0_u64, merkle_root, total_shares, unit_k, deadline_ts, nonce);
             assert(msg_hash == expected, 'BAD_MSG');
+            assert(sig_r != 0, ERR_BAD_SIG);
+            assert(sig_s != 0, ERR_BAD_SIG);
+            assert(ecdsa_verify(expected, p.attester_pubkey, sig_r, sig_s), ERR_BAD_SIG);
 
-            p.allocated_shares = total_shares;
-            p.unit_k = unit_k;
-            p.merkle_root = merkle_root;
-            p.deadline_ts = deadline_ts;
-            p.status = STATUS_FINALIZED;
+        p.allocated_shares = total_shares;
+        p.unit_k = unit_k;
+        p.merkle_root = merkle_root;
+        p.deadline_ts = deadline_ts;
+        p.status = STATUS_FINALIZED;
 
-            self.pools.write(pool_id, p);
-            self.emit(Event::PoolFinalized(PoolFinalized { pool_id, merkle_root, total_shares, unit_k, deadline_ts }));
+        self.pools.write(pool_id, p);
+            self.finalize_nonce_v1.write(pool_id, nonce + 1_u64);
+        self.emit(Event::PoolFinalized(PoolFinalized { pool_id, merkle_root, total_shares, unit_k, deadline_ts }));
+            // 同步写入 epoch=0 元数据，统一领取路径
+            let em0 = super::EpochMeta {
+                merkle_root: merkle_root,
+                total_shares: total_shares,
+                unit_k: unit_k,
+                deadline_ts: deadline_ts,
+                refund_after_ts: deadline_ts,
+                claimed_amount: u256 { low: 0, high: 0 },
+                status: 2_u8,
+            };
+            self.epoch_meta.write((pool_id, 0_u64), em0);
         }
 
-        fn claim(
-            ref self: ContractState,
-            pool_id: u256,
-            index: u256,
-            account: ContractAddress,
-            shares: u256,
-            amount: u256,
+    fn claim(
+        ref self: ContractState,
+        pool_id: u256,
+        index: u256,
+        account: ContractAddress,
+        shares: u256,
+        amount: u256,
             proof: Span<felt252>,
         ) {
             assert(!self.paused.read(), ERR_PAUSED);
@@ -464,16 +560,16 @@ mod KolEscrow {
             let ok = verify_pedersen(proof, p.merkle_root, leaf);
             assert(ok, 'BAD_PROOF');
 
-            self.claimed.write((pool_id, index), true);
+        self.claimed.write((pool_id, index), true);
             let (new_total, overflow2) = p.total_claimed_amount.overflowing_add(amount);
             assert(!overflow2, ERR_OVERFLOW);
-            p.total_claimed_amount = new_total;
-            self.pools.write(pool_id, p);
+        p.total_claimed_amount = new_total;
+        self.pools.write(pool_id, p);
 
-            self.emit(Event::Claimed(Claimed { pool_id, index, account, shares, amount }));
-        }
+        self.emit(Event::Claimed(Claimed { pool_id, index, account, shares, amount }));
+    }
 
-        fn refund_and_close(ref self: ContractState, pool_id: u256, to: ContractAddress) {
+    fn refund_and_close(ref self: ContractState, pool_id: u256, to: ContractAddress) {
             assert_only_owner(@self);
             assert(!self.paused.read(), ERR_PAUSED);
             let mut p: super::PoolInfo = self.pools.read(pool_id);
@@ -486,35 +582,23 @@ mod KolEscrow {
             let (rem, borrow) = p.funded_amount.overflowing_sub(p.total_claimed_amount);
             assert(!borrow, ERR_UNDERFLOW);
 
-            p.status = STATUS_CLOSED;
-            self.pools.write(pool_id, p);
-            self.emit(Event::Refund(Refund { pool_id, to, remaining: rem }));
-        }
+        p.status = STATUS_CLOSED;
+        self.pools.write(pool_id, p);
+        self.emit(Event::Refund(Refund { pool_id, to, remaining: rem }));
+    }
 
         fn get_pool(self: @ContractState, pool_id: u256) -> Option<super::PoolInfo> {
             let p: super::PoolInfo = self.pools.read(pool_id);
             if p.status == 0_u8 { None } else { Some(p) }
         }
 
-        fn preview_amount(self: @ContractState, _pool_id: u256, shares: u256) -> u256 {
-            // 实现：amount = shares * unit_k，简单安全乘法（低位高位）
-            // 这里采用朴素乘法： (a_low + 2^128 a_high) * (b_low + 2^128 b_high)
-            // 由于 Cairo 核心库缺少直接 u256 乘法，这里用近似：若高位非零则认为可能溢出并直接返回 shares（占位策略），
-            // 后续可替换为稳定的 u256 乘法库实现。
+    fn preview_amount(self: @ContractState, _pool_id: u256, shares: u256) -> u256 {
+            // 与领取路径一致：约束高位为 0，使用 64x64->128 精确乘法
             let p: super::PoolInfo = self.pools.read(_pool_id);
-            let a = shares;
-            let b = p.unit_k;
-            // 如果任一高位非零且另一侧非零，则可能溢出
-            if (a.high != 0 && (b.low != 0 || b.high != 0)) {
-                // 占位：返回 shares 以保持函数总是可用
-                return shares;
-            }
-            if (b.high != 0 && (a.low != 0 || a.high != 0)) {
-                return shares;
-            }
-            // 简化：仅计算低位乘积（示例用途），完整实现建议引入 u256 mul 库
-            let res_low = a.low * b.low;
-            u256 { low: res_low, high: 0 }
+            assert(shares.high == 0, ERR_BAD_SHARES);
+            assert(p.unit_k.high == 0, ERR_BAD_UNIT);
+            let res = mul_128x128_to_256_exact_low64(shares.low, p.unit_k.low);
+            res
         }
 
         fn get_pool_status(self: @ContractState, pool_id: u256) -> u8 {
@@ -574,34 +658,14 @@ mod KolEscrow {
             pool_id: u256,
             index: u256,
             account: ContractAddress,
+            shares: u256,
             amount: u256,
+            proof: Span<felt252>,
         ) {
             assert(!self.paused.read(), ERR_PAUSED);
             non_reentrant_enter(ref self);
-
-            let mut p: super::PoolInfo = self.pools.read(pool_id);
-            assert(p.status != 0_u8, ERR_NO_POOL);
-            assert(p.status == STATUS_FINALIZED, ERR_BAD_STATUS);
-
-            let now = get_block_timestamp();
-            assert(now <= p.deadline_ts, ERR_DEADLINE);
-            if self.claimed.read((pool_id, index)) { assert(false, ERR_ALRDY); }
-
-            // 简化：with_transfer 版本暂不传 proof，业务侧外部先验；后续可改签名结构
-            // 可选：把 verify_merkle 接口也暴露到 ABI，前端先调 view 校验
-
-            self.claimed.write((pool_id, index), true);
-            let (new_total, overflow2) = p.total_claimed_amount.overflowing_add(amount);
-            assert(!overflow2, ERR_OVERFLOW);
-            p.total_claimed_amount = new_total;
-            self.pools.write(pool_id, p);
-
-            let erc20 = IERC20Dispatcher { contract_address: p.token };
-            let ok = erc20.transfer(account, amount);
-            assert(ok, ERR_TOUT_FAIL);
-
-            self.emit(Event::Claimed(Claimed { pool_id, index, account, shares: u256 { low: 0, high: 0 }, amount }));
-            self.emit(Event::FundsOut(FundsOut { pool_id, to: account, token: p.token, amount }));
+            // 统一走 epoch=0 的内部实现，避免重入锁嵌套
+            _claim_epoch_internal(ref self, pool_id, 0_u64, index, account, shares, amount, proof);
             non_reentrant_exit(ref self);
         }
 
@@ -643,15 +707,21 @@ mod KolEscrow {
             deadline_ts: u64,
             _msg_hash: felt252, _r: felt252, _s: felt252,
         ) {
+            assert_only_owner(@self);
             assert(!self.paused.read(), ERR_PAUSED);
-            let mut p2: super::PoolInfoV2 = self.pools_v2.read(pool_id);
-            assert(p2.status != 0_u8, ERR_NO_POOL);
+            let mut p: super::PoolInfo = self.pools.read(pool_id);
+            assert(p.status != 0_u8, ERR_NO_POOL);
             assert(total_shares > u256 { low: 0, high: 0 }, ERR_BAD_SHARES);
             assert(unit_k > u256 { low: 0, high: 0 }, ERR_BAD_UNIT);
             let now = get_block_timestamp();
             assert(deadline_ts > now, 'BAD_DEADLINE');
-
-            // 占位：如需资金充足校验，请替换为 u256 乘法 required
+            // 域哈希 + ECDSA 验签 + nonce（使用 V2 公钥）
+            let nonce: u64 = self.finalize_nonce_v2.read((pool_id, epoch));
+            let expected = domain_hash_finalize_v2(pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts, nonce);
+            assert(_msg_hash == expected, 'BAD_MSG');
+            assert(_r != 0, ERR_BAD_SIG);
+            assert(_s != 0, ERR_BAD_SIG);
+            assert(ecdsa_verify(expected, p.attester_pubkey, _r, _s), ERR_BAD_SIG);
 
             let em = super::EpochMeta {
                 merkle_root,
@@ -663,11 +733,13 @@ mod KolEscrow {
                 status: 2_u8,
             };
             self.epoch_meta.write((pool_id, epoch), em);
-            if epoch > p2.current_epoch { p2.current_epoch = epoch; }
-            self.pools_v2.write(pool_id, p2);
+            if epoch > p.current_epoch { p.current_epoch = epoch; }
+            self.pools.write(pool_id, p);
+            self.finalize_nonce_v2.write((pool_id, epoch), nonce + 1_u64);
             self.emit(Event::EpochFinalized(EpochFinalized { pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts }));
         }
 
+        // 无锁内部实现：统一的 epoch 领取路径
         fn claim_epoch_with_transfer(
             ref self: ContractState,
             pool_id: u256,
@@ -680,30 +752,7 @@ mod KolEscrow {
         ) {
             assert(!self.paused.read(), ERR_PAUSED);
             non_reentrant_enter(ref self);
-            let mut p2: super::PoolInfoV2 = self.pools_v2.read(pool_id);
-            assert(p2.status != 0_u8, ERR_NO_POOL);
-            let mut em: super::EpochMeta = self.epoch_meta.read((pool_id, epoch));
-            assert(em.status == 2_u8, ERR_BAD_STATUS);
-            let now = get_block_timestamp();
-            assert(now <= em.deadline_ts, ERR_DEADLINE);
-            if self.claimed_epoch.read((pool_id, epoch, index)) { assert(false, ERR_ALRDY); }
-
-            // 金额校验（占位：应替换为完整 u256 乘法）
-            let _ = shares; let _ = amount; // 避免未用
-
-            let leaf = leaf_hash_pedersen(pool_id, epoch, index, account, shares, amount);
-            let ok = verify_pedersen(proof, em.merkle_root, leaf);
-            assert(ok, 'BAD_PROOF');
-
-            self.claimed_epoch.write((pool_id, epoch, index), true);
-            self.epoch_meta.write((pool_id, epoch), em);
-            self.pools_v2.write(pool_id, p2);
-
-            let erc20 = IERC20Dispatcher { contract_address: p2.token };
-            let ok2 = erc20.transfer(account, amount);
-            assert(ok2, ERR_TOUT_FAIL);
-            self.emit(Event::ClaimedEpoch(ClaimedEpoch { pool_id, epoch, index, account, shares, amount }));
-            self.emit(Event::FundsOut(FundsOut { pool_id, to: account, token: p2.token, amount }));
+            _claim_epoch_internal(ref self, pool_id, epoch, index, account, shares, amount, proof);
             non_reentrant_exit(ref self);
         }
 
@@ -711,19 +760,24 @@ mod KolEscrow {
             assert_only_owner(@self);
             assert(!self.paused.read(), ERR_PAUSED);
             non_reentrant_enter(ref self);
-            let mut p2: super::PoolInfoV2 = self.pools_v2.read(pool_id);
+            let mut p: super::PoolInfo = self.pools.read(pool_id);
             let mut em: super::EpochMeta = self.epoch_meta.read((pool_id, epoch));
             assert(em.status == 2_u8, ERR_BAD_STATUS);
             let now = get_block_timestamp();
             assert(now >= em.refund_after_ts, ERR_NOT_YET);
 
-            // 剩余（占位：应为 total_shares*unit_k - claimed_amount）
-            let rem = u256 { low: 0, high: 0 }; // 占位
+            // 剩余 = total_shares*unit_k - claimed_amount（限制高位为0，使用 64x64->128 精确乘法）
+            assert(em.total_shares.high == 0, ERR_BAD_SHARES);
+            assert(em.unit_k.high == 0, ERR_BAD_UNIT);
+            let required = mul_128x128_to_256_exact_low64(em.total_shares.low, em.unit_k.low);
+            let (rem, borrow) = required.overflowing_sub(em.claimed_amount);
+            assert(!borrow, ERR_UNDERFLOW);
+
             if rem.low != 0 || rem.high != 0 {
-                let erc20 = IERC20Dispatcher { contract_address: p2.token };
+                let erc20 = IERC20Dispatcher { contract_address: p.token };
                 let ok = erc20.transfer(to, rem);
                 assert(ok, ERR_TOUT_FAIL);
-                self.emit(Event::FundsOut(FundsOut { pool_id, to, token: p2.token, amount: rem }));
+                self.emit(Event::FundsOut(FundsOut { pool_id, to, token: p.token, amount: rem }));
             }
 
             em.status = 3_u8;

@@ -1,9 +1,9 @@
 # Smart Contract Tech Spec
 
 创建者: Chen Mark
-创建时间: 2025年9月19日 15:22
+创建时间: 2025 年 9 月 19 日 15:22
 上次编辑者: Chen Mark
-上次更新时间: 2025年9月21日 22:19
+上次更新时间: 2025 年 9 月 21 日 22:19
 
 ## Overview
 
@@ -69,7 +69,7 @@ struct PoolInfo {
     deadline_ts: u64,                // 领取截止时间戳（秒）
     refund_after_ts: u64,            // 允许退款的最早时间（秒）
     chain_id: felt252,               // 链ID缓存用于域隔离
-    domain_separator: felt252,       
+    domain_separator: felt252,
     // hash("KOL/ESCROW", contract_addr, chain_id)
     // 领取防重入/防重复: 方案A 按 index 位图；方案B 按地址映射
     // MVP 采用位图（更省存储），index 由 off-chain 固化
@@ -88,10 +88,8 @@ struct Storage {
 ```
 
 > 注：claimed_bitmap_words 位图：第 index 位标记是否领取。word = index / 256；bit = index % 256。
-> 
-> 
+>
 > 如需“按地址去重”，改为 `LegacyMap<ContractAddress, bool>`。
-> 
 
 ---
 
@@ -150,32 +148,26 @@ const E_NO_BALANCE: u32          = 13;
 ## Hashing & Signatures
 
 - **Merkle**：建议 **Poseidon** 哈希；叶编码固定：
-    
-    `leaf = Poseidon(pool_id, index, account, shares)`（定长定序，防拼接歧义；`shares` 为 u256）。
-    
+  `leaf = Poseidon(pool_id, index, account, shares)`（定长定序，防拼接歧义；`shares` 为 u256）。
 - **Finalize 双签**：
-    - 消息：
-        
-        ```
-        msg = Poseidon(
-          domain_separator,
-          pool_id,
-          merkle_root,
-          total_shares,
-          deadline_ts
-        )
-        
-        ```
-        
-    - **brand_sig**：由 `pools[pool_id].brand_pubkey` 验证；
-    - **attestor_sig**：由 `pools[pool_id].attestor_pubkey` 验证；
-    - 合约还校验 `block_timestamp <= deadline_ts`（防过期签名）。
+  - 消息：
+    ```
+    msg = Poseidon(
+      domain_separator,
+      pool_id,
+      merkle_root,
+      total_shares,
+      deadline_ts
+    )
+
+    ```
+  - **brand_sig**：由 `pools[pool_id].brand_pubkey` 验证；
+  - **attestor_sig**：由 `pools[pool_id].attestor_pubkey` 验证；
+  - 合约还校验 `block_timestamp <= deadline_ts`（防过期签名）。
 
 > domain_separator = Poseidon("KOL/ESCROW", contract_address, chain_id)
-> 
-> 
+>
 > `chain_id` 可通过 `get_execution_info().chain_id` 初始化。
-> 
 
 ---
 
@@ -440,3 +432,48 @@ refund_remaining(pool_id, to)
 ---
 
 **结论**：该合约以 **“托管资金 + Merkle 根 + 双签 finalize + O(log N) 领取 + 到期退款”** 为核心，满足你对 **最终清算、顺序无关、公平按份额发放** 的 MVP 诉求，链上最小逻辑、链下可扩展计算，实施难度低、审计面小、上线快。
+
+## Update (Aligned with current implementation)
+
+- Merkle Hash
+
+  - Switched to OpenZeppelin pedersen-based verification on-chain (openzeppelin_merkle_tree::merkle_proof::verify_pedersen)。
+  - Leaf serialization (felt252 list, pedersen_hash_many with len-prefix, chain order):
+    - [LEAF_TAG, contract_address,
+      pool_id.low, pool_id.high,
+      epoch_id,
+      index.low, index.high,
+      account,
+      shares.low, shares.high,
+      amount.low, amount.high]
+
+- Domain-separated Finalize Message (Pedersen)
+
+  - Hash computed on-chain as:
+    - domain_hash_finalize_v2(
+      pool_id, epoch_id, merkle_root, total_shares, unit_k, deadline_ts, nonce)
+  - Fields included: contract_address, pool_id(low/high), epoch_id, merkle_root, total_shares(low/high), unit_k(low/high), deadline_ts, nonce。
+  - Nonce per (pool) for v1 finalize_pool；per (pool, epoch) for finalize_epoch，防重放。
+
+- Signatures (ECDSA over Stark curve)
+
+  - Both finalize_pool (epoch=0) and finalize_epoch require a valid signature over the domain hash:
+    - assert(ecdsa_verify(expected_hash, attestor_pubkey, r, s))。
+  - Optionally keep msg_hash consistency check (msg_hash == expected_hash) for debugging/observability；当前实现保留。
+
+- ABI Adjustments
+
+  - claim(pool_id, index, account, shares, proof): 增加 shares 与 proof，链上计算 amount = unit_k \* shares，并校验 Merkle（pedersen）。
+  - claim_with_transfer 路由到 epoch=0 的安全路径（与 claim_epoch_with_transfer 逻辑一致）。
+  - 新增：finalize_epoch/claim_epoch_with_transfer/refund_and_close_epoch，事件 EpochFinalized/ClaimedEpoch/RefundEpoch。
+
+- Refund Calculation (epoch)
+
+  - remaining = total_shares \* unit_k - claimed_amount（当前版本限制高位为 0，以避免 u256 乘法库缺失；后续将替换为完整 u256 乘法）。
+
+- Security Alignment
+  - OnlyOwner + Pausable 已启用。
+  - Nonce per finalize scope（pool / (pool,epoch)）。
+  - Merkle proof 验证由 OZ pedersen 提供。
+
+以上内容已在 `contract/src/lib.cairo` 实现并通过构建，链下（FastAPI/脚本）需按本规范构造 leaf/proof 与域哈希进行签名（Stark 曲线）。
