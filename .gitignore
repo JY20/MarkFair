@@ -96,6 +96,9 @@ contract/instructions/
 contract/target/
 contract/config
 contract/target/**
+contract/config.local
+contract/Scarb.lock
+
 
 # Local dev artifacts (addresses, tmp)
 **/.snfoundry-cache/

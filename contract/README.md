@@ -1,32 +1,85 @@
-# MarkFair Smart Contracts
+# MarkFair KolEscrow Contract
 
-MarkFair brings fair, transparent payouts between brands and creators (KOLs) on Starknet.
+## Directory Structure
 
-What this contract does (plain English):
+```
+contract/
+├── src/                          # Cairo contract source code
+│   ├── lib.cairo               # Main contract implementation
+│   └── markfair_token.cairo    # ERC20 token contract
+├── scripts/                      # JavaScript scripts and tools
+│   ├── finalize_and_claim.mjs  # Merkle tree generation and signing script
+│   ├── finalize_and_claim.ts   # TypeScript version
+│   ├── out.json                # Generated signature data
+│   └── package.json            # Node.js dependencies
+├── strk-merkle-tree/            # Starknet Merkle Tree library
+│   └── src/                    # TypeScript source code
+├── instructions/                # Documentation and guides
+│   ├── DEPLOY_TESTNET.md       # Testnet deployment guide
+│   ├── Merkle_tree.md          # Merkle Tree implementation guide
+│   ├── TEST_LOG.md             # Complete test log
+│   └── Smart Contract Tech Spec.md # Technical specification
+├── target/                      # Compilation output
+│   ├── dev/                    # Development build
+│   └── release/                # Release build
+├── tests/                       # Test files
+├── Scarb.toml                  # Scarb configuration
+├── snfoundry.toml              # Starknet Foundry configuration
+└── devnet_accounts.json        # Development network account config
+```
 
-- Escrow the campaign budget in a token vault per “pool”. Funds are held safely until settlement.
-- Lock the final results on-chain using a Merkle root (creator shares) approved by the platform signer.
-- Creators claim their payout trustlessly with a Merkle proof; no central party needed.
-- Optional “epochs” allow multiple settlement rounds for the same pool.
-- Brand can refund the unclaimed remainder after the deadline.
+## Quick Start
 
-Safety & integrity:
+### 1. Compile Contracts
 
-- Signature verification (Stark curve ECDSA) with domain separation + nonces to prevent replay.
-- OpenZeppelin Pedersen Merkle verification for proofs.
-- Reentrancy guard, pause switch, and strict parameter/time checks.
+```bash
+scarb build
+```
 
-Interoperability:
+### 2. Run Test Scripts
 
-- Works with standard ERC20 tokens (approve → fund → claim/refund).
-- Clean ABI for both reads (status, amounts) and writes (fund, finalize, claim, refund).
+```bash
+cd scripts/
+node finalize_and_claim.mjs
+```
 
-Why it matters:
+### 3. Deploy to Testnet
 
-- Transparent math (shares × unit price) and audit-friendly events.
-- Trust-minimized payouts at O(log N) verification cost.
+See `instructions/DEPLOY_TESTNET.md` for detailed steps.
 
-For developers:
+## Deployed Contracts
 
-- See `instructions/Smart Contract Tech Spec ...md` for integration details (ABI, hashing, proofs).
-- Devnet-ready: quick local testing with predeployed accounts and example token (MARK).
+### Starknet Sepolia Testnet
+
+- **KolEscrow**: `0x0542602e67fee6bfbea8368b83f1933ede566c94ef37624bec6a60c7831d2115`
+- **MarkFair Token**: `0x015d942cee86bb00aee0b17aeb6dddb8de07074284a365505960f244ffe44a95`
+
+## Important Documentation
+
+1. **[Deployment Guide](instructions/DEPLOY_TESTNET.md)** - Complete testnet deployment process
+2. **[Merkle Tree Implementation](instructions/Merkle_tree.md)** - JavaScript and Cairo compatible implementation
+3. **[Test Log](instructions/TEST_LOG.md)** - Detailed test verification records
+4. **[Technical Specification](instructions/Smart%20Contract%20Tech%20Spec%202735450c0260801f81f6d744f00f3b25.md)** - Complete contract technical specification
+
+## Development Tools
+
+### Required Tools
+
+- [Scarb](https://docs.swmansion.com/scarb/) - Cairo package manager
+- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/) - Development and testing tools
+- [Node.js](https://nodejs.org/) - JavaScript runtime for scripts
+
+### Recommended Tools
+
+- [starknet-devnet](https://github.com/0xSpaceShard/starknet-devnet-rs) - Local development network
+- [Cairo VSCode Extension](https://marketplace.visualstudio.com/items?itemName=starkware.cairo1) - Syntax highlighting and IntelliSense
+
+## Test Status
+
+✅ **Fully Tested** - All functionality verified on Sepolia testnet  
+✅ **Production Ready** - Contract and JavaScript fully compatible  
+✅ **Complete Documentation** - Includes comprehensive integration guides
+
+## Contact
+
+For questions or suggestions, please refer to the detailed documentation in the `instructions/` directory.

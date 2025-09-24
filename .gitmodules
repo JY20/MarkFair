@@ -1,0 +1,3 @@
+[submodule "contract/strk-merkle-tree"]
+	path = contract/strk-merkle-tree
+	url = https://github.com/ericnordelo/strk-merkle-tree.git

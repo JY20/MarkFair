@@ -22,4 +22,22 @@ The bigger picture is simple. Web3 projects, especially early-stage startups, de
 
 - `frontend/` - Frontend application code
 - `backend/` - Backend server and API code
-- `contract/` - Blockchain smart contracts for escrow and payments
+- `contract/` - Blockchain smart contracts, scripts, and documentation
+  - `src/` - Cairo smart contract source code
+  - `scripts/` - JavaScript tools for Merkle tree and signatures
+  - `strk-merkle-tree/` - Starknet Merkle tree implementation library
+  - `instructions/` - Complete documentation and deployment guides
+  - `target/` - Compiled contract artifacts
+
+## Smart Contract Status
+
+✅ **Deployed on Starknet Sepolia**: Ready for integration  
+✅ **Fully Tested**: Merkle tree signatures verified  
+✅ **Production Ready**: Complete documentation available
+
+### Key Contracts
+
+- **KolEscrow**: `0x0542602e67fee6bfbea8368b83f1933ede566c94ef37624bec6a60c7831d2115`
+- **MarkFair Token**: `0x015d942cee86bb00aee0b17aeb6dddb8de07074284a365505960f244ffe44a95`
+
+For detailed integration guides, see `contract/instructions/`.

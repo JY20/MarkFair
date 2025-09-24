@@ -1,5 +1,5 @@
 #[starknet::contract]
-mod MarkToken {
+mod markfair_token {
     use openzeppelin_token::erc20::{ERC20Component, ERC20HooksEmptyImpl, DefaultConfig};
     use starknet::ContractAddress;
 
@@ -26,8 +26,8 @@ mod MarkToken {
 
     #[constructor]
     fn constructor(ref self: ContractState, initial_supply: core::integer::u256, recipient: ContractAddress) {
-        let name = "Mark Token";
-        let symbol = "MARK";
+        let name = "MarkFair Token";
+        let symbol = "MKFR";
         self.erc20.initializer(name, symbol);
         self.erc20.mint(recipient, initial_supply);
     }
