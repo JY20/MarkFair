@@ -7,25 +7,24 @@ contract/
 ├── src/                          # Cairo contract source code
 │   ├── lib.cairo               # Main contract implementation
 │   └── markfair_token.cairo    # ERC20 token contract
-├── scripts/                      # JavaScript scripts and tools
-│   ├── finalize_and_claim.mjs  # Merkle tree generation and signing script
-│   ├── finalize_and_claim.ts   # TypeScript version
-│   ├── out.json                # Generated signature data
-│   └── package.json            # Node.js dependencies
-├── strk-merkle-tree/            # Starknet Merkle Tree library
-│   └── src/                    # TypeScript source code
+├── scripts/                           # JavaScript scripts and tools
+│   ├── devnet_merkle_generator.mjs    # Devnet环境Merkle生成器（前端开发用）
+│   ├── pool_deployment_generator.mjs  # Pool部署命令生成器（后端运维用）
+│   ├── testnet_hash_validator.mjs     # 测试网哈希验证器（前端验证用）
+│   ├── backend_merkle_generator.mjs   # 后端Merkle生成器（后端集成用）
+│   ├── backend_merkle_generator.py    # 后端Merkle生成器（Python版本）
+│   ├── out.json                       # 生成的测试数据
+│   └── package.json                   # Node.js依赖配置
 ├── instructions/                # Documentation and guides
-│   ├── DEPLOY_TESTNET.md       # Testnet deployment guide
-│   ├── Merkle_tree.md          # Merkle Tree implementation guide
-│   ├── TEST_LOG.md             # Complete test log
-│   └── Smart Contract Tech Spec.md # Technical specification
+│   ├── deploy_testnet.md       # Testnet deployment guide
+│   ├── merkle_tree.md          # Merkle Tree implementation guide
+│   └── smart_contract_spec.md  # Technical specification
 ├── target/                      # Compilation output
 │   ├── dev/                    # Development build
 │   └── release/                # Release build
 ├── tests/                       # Test files
 ├── Scarb.toml                  # Scarb configuration
-├── snfoundry.toml              # Starknet Foundry configuration
-└── devnet_accounts.json        # Development network account config
+└── snfoundry.toml              # Starknet Foundry configuration
 ```
 
 ## Quick Start
@@ -51,15 +50,14 @@ See `instructions/DEPLOY_TESTNET.md` for detailed steps.
 
 ### Starknet Sepolia Testnet
 
-- **KolEscrow**: `0x0542602e67fee6bfbea8368b83f1933ede566c94ef37624bec6a60c7831d2115`
-- **MarkFair Token**: `0x015d942cee86bb00aee0b17aeb6dddb8de07074284a365505960f244ffe44a95`
+- **KolEscrow**: `0x0208b971642fa7a85733d433895d6c6b83dc4eda4e04067be15847a03d7d4524`
+- **MarkFair Token**: `0x07cc3116574d1cb35face2e22a38052d1ddac612b34be2f37599431985e62ae9`
 
 ## Important Documentation
 
-1. **[Deployment Guide](instructions/DEPLOY_TESTNET.md)** - Complete testnet deployment process
-2. **[Merkle Tree Implementation](instructions/Merkle_tree.md)** - JavaScript and Cairo compatible implementation
-3. **[Test Log](instructions/TEST_LOG.md)** - Detailed test verification records
-4. **[Technical Specification](instructions/Smart%20Contract%20Tech%20Spec%202735450c0260801f81f6d744f00f3b25.md)** - Complete contract technical specification
+1. **[Deployment Guide](instructions/deploy_testnet.md)** - Complete testnet deployment process
+2. **[Merkle Tree Implementation](instructions/merkle_tree.md)** - JavaScript and Cairo compatible implementation
+3. **[Technical Specification](instructions/smart_contract_spec.md)** - Complete contract technical specification
 
 ## Development Tools
 
