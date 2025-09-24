@@ -90,3 +90,17 @@ cache/
 
 # Local blockchain
 ganache-db/
+
+# contract instructions
+contract/instructions/
+contract/target/
+contract/config
+contract/target/**
+contract/config.local
+contract/Scarb.lock
+
+
+# Local dev artifacts (addresses, tmp)
+**/.snfoundry-cache/
+**/.starknet_artifacts.json
+**/*.contract_class.json
