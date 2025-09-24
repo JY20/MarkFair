@@ -331,8 +331,8 @@ function exampleUsage() {
   const params = {
     users,
     contractAddress:
-      "0x0208b971642fa7a85733d433895d6c6b83dc4eda4e04067be15847a03d7d4524",
-    pool_id: { low: 100n, high: 0n },
+      "0x0496202f5f0622e0fa42a6fc63e81ecc717972cb9fb7374257f793422a4c2a78",
+    pool_id: { low: 200n, high: 0n },
     epoch: 1n,
     deadline_ts: BigInt(Math.floor(Date.now() / 1000) + 86400), // 24小时后
     nonce: 0n, // 从合约查询当前nonce
