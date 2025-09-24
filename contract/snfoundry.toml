@@ -22,3 +22,8 @@ accounts-file = "./devnet_accounts.json"
 
 [sncast.default]
 account = "sepolia"
+
+[sncast.sepolia]
+url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_8"
+account = "sepolia"
+accounts-file = "/Users/ctrl/.starknet_accounts/starknet_open_zeppelin_accounts.json"

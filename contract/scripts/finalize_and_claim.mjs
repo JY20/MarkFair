@@ -1,16 +1,15 @@
 import { ec, hash, shortString } from "starknet";
-import { StandardMerkleTree } from "@ericnordelo/strk-merkle-tree";
+import { SimpleMerkleTree } from "@ericnordelo/strk-merkle-tree";
 import fs from "node:fs";
 
-// Addresses (updated for Sepolia testnet)
+// Addresses (updated for devnet - final version with standard leaf hash)
 const ESCROW =
-  "0x0542602e67fee6bfbea8368b83f1933ede566c94ef37624bec6a60c7831d2115";
+  "0x00b1642b76869266f123541e896a5c51a38d80c8da6337be11f6aaffbc9d883a";
 const TOKEN =
-  "0x015d942cee86bb00aee0b17aeb6dddb8de07074284a365505960f244ffe44a95";
+  "0x02782e5d032ef7a97d969cd19fdf25160d4c6131c7f3e6cbdca2f1435fe230f7";
 const BRAND =
-  "0x1ea8da13e8ae65fe7e1fb368e174d50f1b9588305a4f12629c9eef467c4abee"; // sepolia账户
-const BRAND2 =
-  "0x64b48806902a367c8598f4f95c305e8c1a1acba5f082d294a43793113115691"; // account-1账户
+  "0x064b48806902a367c8598f4f95c305e8c1a1acba5f082d294a43793113115691"; // devnet账户 (padded)
+const BRAND2 = "0x00078662e7352d062084b0010068b99288486c2d8b"; // devnet账户2 (padded)
 
 const POOL_LOW = 13n; // pool_id = 13
 const POOL_HIGH = 0n;
@@ -32,8 +31,18 @@ try {
 const ATTESTER_PUB = ec.starkCurve.getStarkKey(ATTESTER_PRIV);
 
 function normalizeHex(h) {
+  if (typeof h === "bigint") h = "0x" + h.toString(16);
+  if (typeof h === "number") h = "0x" + h.toString(16);
+  if (typeof h !== "string") h = h.toString();
   if (!h.startsWith("0x")) h = "0x" + h;
-  return h.length % 2 === 0 ? h : "0x0" + h.slice(2);
+  // 保持原始长度用于哈希计算
+  return h;
+}
+
+function normalizeHexForLib(h) {
+  const normalized = normalizeHex(h);
+  // 为strk-merkle-tree库添加前导零确保偶数长度
+  return normalized.length % 2 === 0 ? normalized : "0x0" + normalized.slice(2);
 }
 
 function shortStrHex(s) {
@@ -55,55 +64,146 @@ function pedersenNodeHash(a, b) {
   return normalizeHex(hash.computeHashOnElements([l, r]));
 }
 
-function buildLeafHash(index, account, shares, unitK) {
-  const amount = shares * unitK; // 64x64 -> 128, high=0 in contract
-  // 匹配合约中的 leaf_hash_pedersen 实现：
-  // acc = pedersen(0, account)
-  // acc = pedersen(acc, amount.low)
-  // acc = pedersen(acc, 2)
-  // result = pedersen(0, acc)
-  let acc = "0x0";
-  acc = hash.computePedersenHash(acc, account);
-  acc = hash.computePedersenHash(acc, "0x" + amount.toString(16));
-  acc = hash.computePedersenHash(acc, "0x2");
-  return normalizeHex(hash.computePedersenHash("0x0", acc));
+// 计算包含所有参数的安全哈希（第一步），使用域标签
+function computeSecureHash(pool_id, epoch, index, account, shares, unitK) {
+  const amount = shares * unitK;
+  const LEAF_TAG = shortString.encodeShortString("KOL_LEAF");
+
+  // 修复：使用连续的pedersen调用模拟PedersenTrait::new(0)
+  let state = "0x0";
+
+  state = hash.computePedersenHash(state, LEAF_TAG);
+  state = hash.computePedersenHash(state, normalizeHex(pool_id.low));
+  state = hash.computePedersenHash(state, normalizeHex(pool_id.high));
+  state = hash.computePedersenHash(state, normalizeHex(epoch));
+  state = hash.computePedersenHash(state, normalizeHex(index));
+  state = hash.computePedersenHash(state, "0x0"); // index.high
+  state = hash.computePedersenHash(state, account);
+  state = hash.computePedersenHash(state, normalizeHex(shares));
+  state = hash.computePedersenHash(state, "0x0"); // shares.high
+  state = hash.computePedersenHash(state, normalizeHex(amount));
+  state = hash.computePedersenHash(state, "0x0"); // amount.high
+  state = hash.computePedersenHash(state, "0x7"); // Parameter count
+
+  return normalizeHex(state);
+}
+
+// 自定义叶子哈希函数，精确匹配合约的 leaf_hash_pedersen
+function customLeafHash(leafData) {
+  const [account, secureHash] = leafData;
+
+  // 修复：使用连续的pedersen调用模拟PedersenTrait::new(0)
+  let state = "0x0";
+
+  state = hash.computePedersenHash(state, account);
+  state = hash.computePedersenHash(state, secureHash);
+  state = hash.computePedersenHash(state, "0x2");
+
+  const finalized = state;
+  const finalHash = hash.computePedersenHash("0x0", finalized);
+
+  return normalizeHex(finalHash);
+}
+
+// 自定义节点哈希函数，精确匹配OpenZeppelin的PedersenCHasher
+function customNodeHash(left, right) {
+  // 精确匹配Cairo实现：
+  // if a < b { hash_state.update(a).update(b).update(2).finalize() }
+  // else { hash_state.update(b).update(a).update(2).finalize() }
+
+  // 转换为BigInt进行数值比较（匹配Cairo的felt252比较）
+  const leftBig = BigInt(left);
+  const rightBig = BigInt(right);
+
+  let elements;
+  if (leftBig < rightBig) {
+    elements = [left, right, "0x2"];
+  } else {
+    elements = [right, left, "0x2"];
+  }
+
+  const serialized = elements.map((x) => normalizeHex(x));
+  const result = hash.computeHashOnElements(serialized);
+  return normalizeHexForLib(result);
+}
+
+// 使用SimpleMerkleTree和自定义哈希函数
+function buildMerkleTreeCustom(users, pool_id, epoch) {
+  const unitK = 1_000_000_000_000_000_000n; // 1e18
+
+  // 为每个用户计算叶子哈希
+  const leafHashes = users.map((user, index) => {
+    const secureHash = computeSecureHash(
+      pool_id,
+      epoch,
+      BigInt(index),
+      user.account,
+      user.shares,
+      unitK
+    );
+    // 直接计算叶子哈希，并为库格式化
+    const leafHash = customLeafHash([user.account, secureHash]);
+    return normalizeHexForLib(leafHash);
+  });
+
+  // 使用SimpleMerkleTree
+  const tree = SimpleMerkleTree.of(leafHashes, { nodeHash: customNodeHash });
+
+  // 为了兼容原来的接口，我们需要添加一些方法
+  tree.originalData = users.map((user, index) => {
+    const secureHash = computeSecureHash(
+      pool_id,
+      epoch,
+      BigInt(index),
+      user.account,
+      user.shares,
+      unitK
+    );
+    return [user.account, secureHash];
+  });
+
+  return tree;
 }
 
 async function main() {
   const unitK = 1_000_000_000_000_000_000n; // 1e18
   const shares1 = 7_500n;
   const shares2 = 2_500n;
-  const index = 0n;
+  const pool_id = { low: POOL_LOW, high: POOL_HIGH };
 
-  const leaf1 = buildLeafHash(index, BRAND, shares1, unitK);
-  const leaf2 = buildLeafHash(1n, BRAND2, shares2, unitK);
+  // 用户数据
+  const users = [
+    { account: BRAND, shares: shares1 },
+    { account: BRAND2, shares: shares2 },
+  ];
 
-  // 手动构建merkle tree，因为我们需要使用自定义的leaf hash
-  const leaves = [leaf1, leaf2];
+  // 使用新的标准 Merkle Tree 实现
+  const tree = buildMerkleTreeCustom(users, pool_id, EPOCH);
+  const root = tree.root;
 
-  // 对叶子进行排序以匹配合约中的PedersenCHasher行为
-  const sortedLeaves = [...leaves].sort((a, b) => {
-    const aa = BigInt(a);
-    const bb = BigInt(b);
-    return aa < bb ? -1 : aa > bb ? 1 : 0;
-  });
+  // 获取proof - SimpleMerkleTree使用不同的接口
+  let proof, proof2;
 
-  // 构建简单的两叶子merkle tree
-  const root = pedersenNodeHash(sortedLeaves[0], sortedLeaves[1]);
-
-  // 生成proof
-  const leaf1Index = sortedLeaves.indexOf(leaf1);
-  const leaf2Index = sortedLeaves.indexOf(leaf2);
-
-  const proof = leaf1Index === 0 ? [sortedLeaves[1]] : [sortedLeaves[0]];
-  const proof2 = leaf2Index === 0 ? [sortedLeaves[1]] : [sortedLeaves[0]];
+  // 找到对应用户的索引
+  let user1Index = -1,
+    user2Index = -1;
+  for (let i = 0; i < tree.originalData.length; i++) {
+    if (tree.originalData[i][0] === BRAND) {
+      user1Index = i;
+      proof = tree.getProof(i);
+    }
+    if (tree.originalData[i][0] === BRAND2) {
+      user2Index = i;
+      proof2 = tree.getProof(i);
+    }
+  }
 
   const totalShares = shares1 + shares2; // 10000
   const deadlineTs = BigInt(Math.floor(Date.now() / 1000) + 3600);
-  const nonce = 0n; // Sepolia上的nonce是0
+  const nonce = 1n; // 当前nonce是1
 
   const expected = pedersenMany([
-    shortStrHex("KOL_FINALIZE_V1"),
+    shortStrHex("KOL_FINALIZE"),
     ESCROW,
     "0x" + POOL_LOW.toString(16),
     "0x" + POOL_HIGH.toString(16),
@@ -119,17 +219,32 @@ async function main() {
 
   const sig = ec.starkCurve.sign(expected, ATTESTER_PRIV);
 
-  // 本地校验：手动验证merkle proof
-  function verifyProof(root, leaf, proof) {
-    let current = leaf;
-    for (const sibling of proof) {
-      current = pedersenNodeHash(current, sibling);
-    }
-    return current === root;
-  }
+  // 本地校验：使用SimpleMerkleTree验证
+  const leaf1 = customLeafHash([
+    BRAND,
+    computeSecureHash(
+      pool_id,
+      EPOCH,
+      0n,
+      BRAND,
+      shares1,
+      1_000_000_000_000_000_000n
+    ),
+  ]);
+  const leaf2 = customLeafHash([
+    BRAND2,
+    computeSecureHash(
+      pool_id,
+      EPOCH,
+      1n,
+      BRAND2,
+      shares2,
+      1_000_000_000_000_000_000n
+    ),
+  ]);
 
-  const local_ok1 = verifyProof(root, leaf1, proof);
-  const local_ok2 = verifyProof(root, leaf2, proof2);
+  const local_ok1 = tree.verify(user1Index, proof);
+  const local_ok2 = tree.verify(user2Index, proof2);
 
   const out = {
     escrow: ESCROW,
@@ -151,15 +266,21 @@ async function main() {
     proof_len: proof.length,
     local_ok1,
     local_ok2,
-    index: index.toString(),
+    index: "0",
     shares: { low: shares1.toString(), high: "0" },
-    amount: { low: (shares1 * unitK).toString(), high: "0" },
+    amount: {
+      low: (shares1 * 1_000_000_000_000_000_000n).toString(),
+      high: "0",
+    },
     account: BRAND,
     second: {
       index: "1",
       account: BRAND2,
       shares: { low: shares2.toString(), high: "0" },
-      amount: { low: (shares2 * unitK).toString(), high: "0" },
+      amount: {
+        low: (shares2 * 1_000_000_000_000_000_000n).toString(),
+        high: "0",
+      },
     },
   };
 

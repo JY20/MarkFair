@@ -98,6 +98,8 @@ pub trait IKolEscrow<TContractState> {
     fn get_finalize_nonce(self: @TContractState, pool_id: core::integer::u256, epoch: u64) -> u64;
     fn compute_domain_hash(self: @TContractState, pool_id: core::integer::u256, epoch: u64, merkle_root: felt252, total_shares: core::integer::u256, unit_k: core::integer::u256, deadline_ts: u64, nonce: u64) -> felt252;
     fn verify_epoch_proof(self: @TContractState, pool_id: core::integer::u256, epoch: u64, index: core::integer::u256, account: starknet::ContractAddress, shares: core::integer::u256, amount: core::integer::u256, proof: core::array::Span<felt252>) -> bool;
+    // Debug function to test leaf hash (commented out for production)
+    // fn debug_leaf_hash(self: @TContractState, pool_id: core::integer::u256, epoch: u64, index: core::integer::u256, account: starknet::ContractAddress, shares: core::integer::u256, amount: core::integer::u256) -> felt252;
 }
 
 #[starknet::interface]
@@ -126,6 +128,8 @@ mod KolEscrow {
     use core::ecdsa::check_ecdsa_signature as ecdsa_verify;
     use openzeppelin_merkle_tree::merkle_proof::verify;
     use openzeppelin_merkle_tree::hashes::PedersenCHasher;
+    use core::hash::{HashStateTrait, HashStateExTrait};
+    use core::pedersen::PedersenTrait;
 
     // -------- Error constants (felt shortstrings) --------
     const ERR_PAUSED: felt252 = 'PAUSED';
@@ -190,7 +194,30 @@ mod KolEscrow {
         u256 { low: res_low, high: 0 }
     }
 
-    const LEAF_TAG: felt252 = 'KOL_LEAF_V1';
+    const LEAF_TAG: felt252 = 'KOL_LEAF';
+
+    // 计算包含所有参数的安全哈希，使用域标签
+    fn compute_secure_hash(
+        pool_id: u256,
+        epoch: u64,
+        index: u256,
+        account: ContractAddress,
+        shares: u256,
+        amount: u256,
+    ) -> felt252 {
+        let hash_state = PedersenTrait::new(0);
+        let finalized = hash_state
+            .update_with(LEAF_TAG)        // 域标签：明确叶子语义
+            .update_with(pool_id)
+            .update_with(epoch)
+            .update_with(index)
+            .update_with(account)
+            .update_with(shares)
+            .update_with(amount)
+            .update_with(7_u8)  // 参数数量更新为7（包含域标签）
+            .finalize();
+        finalized
+    }
 
     fn leaf_hash_pedersen(
         pool_id: u256,
@@ -200,11 +227,17 @@ mod KolEscrow {
         shares: u256,
         amount: u256,
     ) -> felt252 {
-        let mut acc: felt252 = 0;
-        acc = pedersen(acc, (account.into()));
-        acc = pedersen(acc, amount.low.into());
-        acc = pedersen(acc, 2);
-        pedersen(0, acc)
+        // 混合方法：安全哈希 + 标准叶子格式
+        // 第一步：计算包含所有参数的安全哈希
+        let secure_hash = compute_secure_hash(pool_id, epoch, index, account, shares, amount);
+        
+        // 第二步：使用标准 OpenZeppelin 叶子哈希格式（不包含参数数量）
+        let hash_state = PedersenTrait::new(0);
+        let finalized = hash_state
+            .update_with(account)
+            .update_with(secure_hash)  // 使用安全哈希替代简单amount
+            .finalize();
+        pedersen(0, finalized)
     }
 
     fn domain_hash_finalize(
@@ -218,7 +251,7 @@ mod KolEscrow {
     ) -> felt252 {
         let mut a = ArrayTrait::new();
         let ca: felt252 = starknet::get_contract_address().into();
-        a.append('KOL_FINALIZE_V1');
+        a.append('KOL_FINALIZE');
         a.append(ca);
         a.append(pool_id.low.into()); a.append(pool_id.high.into());
         a.append(epoch.into());
@@ -259,7 +292,7 @@ mod KolEscrow {
         assert(now <= em.deadline_ts, ERR_DEADLINE);
         if self.claimed_epoch.read((pool_id, epoch, index)) { assert(false, ERR_ALRDY); }
 
-            // 金额一致性：限制高位为0，使用 64x64->128 精确乘法
+        // 金额一致性：限制高位为0，使用 64x64->128 精确乘法
         assert(shares.high == 0, ERR_BAD_SHARES);
         assert(em.unit_k.high == 0, ERR_BAD_UNIT);
             let expected = mul_128x128_to_256_exact_low64(shares.low, em.unit_k.low);
@@ -311,8 +344,6 @@ mod KolEscrow {
 
     #[derive(Drop, starknet::Event)]
     struct PoolFunded { pool_id: u256, delta: u256, total: u256 }
-
-    // v1 事件已移除
 
     #[derive(Drop, starknet::Event)]
     struct OwnershipTransferred { previous_owner: ContractAddress, new_owner: ContractAddress }
@@ -391,13 +422,6 @@ mod KolEscrow {
         self.emit(Event::PoolCreated(PoolCreated { pool_id, brand, token }));
     }
 
-    // fund_pool (v1) 已移除，统一使用 fund_pool_with_transfer
-
-    // finalize_pool (v1) 已移除，统一使用 finalize_epoch
-
-    // claim (v1) 已移除，统一使用 claim_epoch_with_transfer
-
-    // refund_and_close (v1) 已移除，统一使用 refund_and_close_epoch
 
         fn get_pool(self: @ContractState, pool_id: u256) -> Option<super::PoolInfo> {
             let p: super::PoolInfo = self.pools.read(pool_id);
@@ -607,7 +631,12 @@ mod KolEscrow {
 
     fn compute_domain_hash(self: @ContractState, pool_id: u256, epoch: u64, merkle_root: felt252, total_shares: u256, unit_k: u256, deadline_ts: u64, nonce: u64) -> felt252 {
         domain_hash_finalize(pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts, nonce)
-        }
+    }
+
+    // Debug function to test leaf hash (commented out for production)
+    // fn debug_leaf_hash(self: @ContractState, pool_id: u256, epoch: u64, index: u256, account: ContractAddress, shares: u256, amount: u256) -> felt252 {
+    //     leaf_hash_pedersen(pool_id, epoch, index, account, shares, amount)
+    // }
 
     // 只读：校验某个叶与 proof 是否匹配当前 epoch 的 merkle_root（便于脚本先本地预校验）
     fn verify_epoch_proof(self: @ContractState, pool_id: u256, epoch: u64, index: u256, account: ContractAddress, shares: u256, amount: u256, proof: Span<felt252>) -> bool {
