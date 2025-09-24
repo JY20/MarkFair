@@ -43,7 +43,7 @@ pub trait IKolEscrow<TContractState> {
 
     fn get_pool(self: @TContractState, pool_id: core::integer::u256) -> core::option::Option<PoolInfo>;
 
-    fn preview_amount(self: @TContractState, _pool_id: core::integer::u256, shares: core::integer::u256) -> core::integer::u256;
+    fn preview_amount(self: @TContractState, pool_id: core::integer::u256, epoch: u64, shares: core::integer::u256) -> core::integer::u256;
 
     fn get_pool_status(self: @TContractState, pool_id: core::integer::u256) -> u8;
     fn get_pool_funded(self: @TContractState, pool_id: core::integer::u256) -> core::integer::u256;
@@ -57,18 +57,6 @@ pub trait IKolEscrow<TContractState> {
         from: starknet::ContractAddress,
         amount: core::integer::u256,
     );
-
-    fn claim_with_transfer(
-        ref self: TContractState,
-        pool_id: core::integer::u256,
-        index: core::integer::u256,
-        account: starknet::ContractAddress,
-        shares: core::integer::u256,
-        amount: core::integer::u256,
-        proof: core::array::Span<felt252>,
-    );
-
-    fn refund_and_close_with_transfer(ref self: TContractState, pool_id: core::integer::u256, to: starknet::ContractAddress);
 
     // epoch 接口（唯一可信）
     fn finalize_epoch(
@@ -98,8 +86,6 @@ pub trait IKolEscrow<TContractState> {
     fn get_finalize_nonce(self: @TContractState, pool_id: core::integer::u256, epoch: u64) -> u64;
     fn compute_domain_hash(self: @TContractState, pool_id: core::integer::u256, epoch: u64, merkle_root: felt252, total_shares: core::integer::u256, unit_k: core::integer::u256, deadline_ts: u64, nonce: u64) -> felt252;
     fn verify_epoch_proof(self: @TContractState, pool_id: core::integer::u256, epoch: u64, index: core::integer::u256, account: starknet::ContractAddress, shares: core::integer::u256, amount: core::integer::u256, proof: core::array::Span<felt252>) -> bool;
-    // Debug function to test leaf hash (commented out for production)
-    // fn debug_leaf_hash(self: @TContractState, pool_id: core::integer::u256, epoch: u64, index: core::integer::u256, account: starknet::ContractAddress, shares: core::integer::u256, amount: core::integer::u256) -> felt252;
 }
 
 #[starknet::interface]
@@ -154,8 +140,6 @@ mod KolEscrow {
 
     const STATUS_CREATED: u8 = 1_u8;
     const STATUS_FUNDED: u8 = 2_u8;
-    const STATUS_FINALIZED: u8 = 3_u8;
-    const STATUS_CLOSED: u8 = 4_u8;
 
     // 64 位阈值（用于 128x128->256 的精确乘法在 64x64 情况下无溢出）
     const MAX_U64: u128 = 18446744073709551615_u128;
@@ -428,14 +412,15 @@ mod KolEscrow {
             if p.status == 0_u8 { None } else { Some(p) }
         }
 
-    fn preview_amount(self: @ContractState, _pool_id: u256, shares: u256) -> u256 {
-            // 与领取路径一致：约束高位为 0，使用 64x64->128 精确乘法
-            let p: super::PoolInfo = self.pools.read(_pool_id);
+    fn preview_amount(self: @ContractState, pool_id: u256, epoch: u64, shares: u256) -> u256 {
             assert(shares.high == 0, ERR_BAD_SHARES);
-            assert(p.unit_k.high == 0, ERR_BAD_UNIT);
-            let res = mul_128x128_to_256_exact_low64(shares.low, p.unit_k.low);
-            res
+            
+            // 直接使用epoch级别的unit_k，与实际清算逻辑一致
+            let em: super::EpochMeta = self.epoch_meta.read((pool_id, epoch));
+            assert(em.unit_k.high == 0, ERR_BAD_UNIT);
+            mul_128x128_to_256_exact_low64(shares.low, em.unit_k.low)
         }
+
 
         fn get_pool_status(self: @ContractState, pool_id: u256) -> u8 {
             let p: super::PoolInfo = self.pools.read(pool_id);
@@ -488,49 +473,6 @@ mod KolEscrow {
 
             non_reentrant_exit(ref self);
     }
-
-        fn claim_with_transfer(
-        ref self: ContractState,
-        pool_id: u256,
-        index: u256,
-        account: ContractAddress,
-        shares: u256,
-        amount: u256,
-            proof: Span<felt252>,
-        ) {
-            assert(!self.paused.read(), ERR_PAUSED);
-            non_reentrant_enter(ref self);
-            // 统一走 epoch=0 的内部实现，避免重入锁嵌套
-            _claim_epoch_internal(ref self, pool_id, 0_u64, index, account, shares, amount, proof);
-            non_reentrant_exit(ref self);
-        }
-
-        fn refund_and_close_with_transfer(ref self: ContractState, pool_id: u256, to: ContractAddress) {
-            assert_only_owner(@self);
-            assert(!self.paused.read(), ERR_PAUSED);
-            non_reentrant_enter(ref self);
-
-            let mut p: super::PoolInfo = self.pools.read(pool_id);
-            assert(p.status != 0_u8, ERR_NO_POOL);
-            assert(p.status == STATUS_FINALIZED, ERR_BAD_STATUS);
-            let now = get_block_timestamp();
-            assert(now >= p.refund_after_ts, ERR_NOT_YET);
-
-            let (rem, borrow) = p.funded_amount.overflowing_sub(p.total_claimed_amount);
-            assert(!borrow, ERR_UNDERFLOW);
-
-            if rem.low != 0 || rem.high != 0 {
-                let erc20 = IERC20Dispatcher { contract_address: p.token };
-                let ok = erc20.transfer(to, rem);
-                assert(ok, ERR_TOUT_FAIL);
-                self.emit(Event::FundsOut(FundsOut { pool_id, to, token: p.token, amount: rem }));
-            }
-
-        p.status = STATUS_CLOSED;
-        self.pools.write(pool_id, p);
-            // 不再触发 v1 Refund 事件
-            non_reentrant_exit(ref self);
-        }
 
         // epoch 接口开始
         fn finalize_epoch(
@@ -632,11 +574,6 @@ mod KolEscrow {
     fn compute_domain_hash(self: @ContractState, pool_id: u256, epoch: u64, merkle_root: felt252, total_shares: u256, unit_k: u256, deadline_ts: u64, nonce: u64) -> felt252 {
         domain_hash_finalize(pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts, nonce)
     }
-
-    // Debug function to test leaf hash (commented out for production)
-    // fn debug_leaf_hash(self: @ContractState, pool_id: u256, epoch: u64, index: u256, account: ContractAddress, shares: u256, amount: u256) -> felt252 {
-    //     leaf_hash_pedersen(pool_id, epoch, index, account, shares, amount)
-    // }
 
     // 只读：校验某个叶与 proof 是否匹配当前 epoch 的 merkle_root（便于脚本先本地预校验）
     fn verify_epoch_proof(self: @ContractState, pool_id: u256, epoch: u64, index: u256, account: ContractAddress, shares: u256, amount: u256, proof: Span<felt252>) -> bool {
