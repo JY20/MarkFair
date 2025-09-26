@@ -1,0 +1,840 @@
+[
+  {
+    "type": "impl",
+    "name": "KolEscrowImpl",
+    "interface_name": "contract::IKolEscrow"
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::integer::u256",
+    "members": [
+      {
+        "name": "low",
+        "type": "core::integer::u128"
+      },
+      {
+        "name": "high",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "contract::PoolInfo",
+    "members": [
+      {
+        "name": "brand",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "attester_pubkey",
+        "type": "core::felt252"
+      },
+      {
+        "name": "status",
+        "type": "core::integer::u8"
+      },
+      {
+        "name": "funded_amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "total_claimed_amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "current_epoch",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "allocated_shares",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "unit_k",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "merkle_root",
+        "type": "core::felt252"
+      },
+      {
+        "name": "deadline_ts",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "refund_after_ts",
+        "type": "core::integer::u64"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "core::option::Option::<contract::PoolInfo>",
+    "variants": [
+      {
+        "name": "Some",
+        "type": "contract::PoolInfo"
+      },
+      {
+        "name": "None",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<core::felt252>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<core::felt252>"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "contract::EpochMeta",
+    "members": [
+      {
+        "name": "merkle_root",
+        "type": "core::felt252"
+      },
+      {
+        "name": "total_shares",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "unit_k",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "deadline_ts",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "refund_after_ts",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "claimed_amount",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "status",
+        "type": "core::integer::u8"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "contract::IKolEscrow",
+    "items": [
+      {
+        "type": "function",
+        "name": "pause",
+        "inputs": [
+          {
+            "name": "flag",
+            "type": "core::bool"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "create_pool",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "brand",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "attester_pubkey",
+            "type": "core::felt252"
+          },
+          {
+            "name": "deadline_ts",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "refund_after_ts",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_pool",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::option::Option::<contract::PoolInfo>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "preview_amount",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "shares",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pool_status",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u8"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pool_funded",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pool_brand",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_pool_token",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "fund_pool_with_transfer",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "from",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "finalize_epoch",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "merkle_root",
+            "type": "core::felt252"
+          },
+          {
+            "name": "total_shares",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "unit_k",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "deadline_ts",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "_msg_hash",
+            "type": "core::felt252"
+          },
+          {
+            "name": "_r",
+            "type": "core::felt252"
+          },
+          {
+            "name": "_s",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "claim_epoch_with_transfer",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "index",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "shares",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "proof",
+            "type": "core::array::Span::<core::felt252>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "refund_and_close_epoch",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "to",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_epoch_meta",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "contract::EpochMeta"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_finalize_nonce",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u64"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "compute_domain_hash",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "merkle_root",
+            "type": "core::felt252"
+          },
+          {
+            "name": "total_shares",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "unit_k",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "deadline_ts",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "nonce",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "verify_epoch_proof",
+        "inputs": [
+          {
+            "name": "pool_id",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "epoch",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "index",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "account",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "shares",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "proof",
+            "type": "core::array::Span::<core::felt252>"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::bool"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "owner_",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::Paused",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "by",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "flag",
+        "type": "core::bool",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::PoolCreated",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "brand",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::PoolFunded",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "delta",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "total",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::FundsIn",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "from",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::FundsOut",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "to",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::OwnershipTransferred",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "previous_owner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "new_owner",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::EpochFinalized",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "merkle_root",
+        "type": "core::felt252",
+        "kind": "data"
+      },
+      {
+        "name": "total_shares",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "unit_k",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "deadline_ts",
+        "type": "core::integer::u64",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::RefundEpoch",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "to",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "remaining",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::ClaimedEpoch",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "pool_id",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "epoch",
+        "type": "core::integer::u64",
+        "kind": "data"
+      },
+      {
+        "name": "index",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "account",
+        "type": "core::starknet::contract_address::ContractAddress",
+        "kind": "data"
+      },
+      {
+        "name": "shares",
+        "type": "core::integer::u256",
+        "kind": "data"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u256",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "contract::KolEscrow::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "Paused",
+        "type": "contract::KolEscrow::Paused",
+        "kind": "nested"
+      },
+      {
+        "name": "PoolCreated",
+        "type": "contract::KolEscrow::PoolCreated",
+        "kind": "nested"
+      },
+      {
+        "name": "PoolFunded",
+        "type": "contract::KolEscrow::PoolFunded",
+        "kind": "nested"
+      },
+      {
+        "name": "FundsIn",
+        "type": "contract::KolEscrow::FundsIn",
+        "kind": "nested"
+      },
+      {
+        "name": "FundsOut",
+        "type": "contract::KolEscrow::FundsOut",
+        "kind": "nested"
+      },
+      {
+        "name": "OwnershipTransferred",
+        "type": "contract::KolEscrow::OwnershipTransferred",
+        "kind": "nested"
+      },
+      {
+        "name": "EpochFinalized",
+        "type": "contract::KolEscrow::EpochFinalized",
+        "kind": "nested"
+      },
+      {
+        "name": "RefundEpoch",
+        "type": "contract::KolEscrow::RefundEpoch",
+        "kind": "nested"
+      },
+      {
+        "name": "ClaimedEpoch",
+        "type": "contract::KolEscrow::ClaimedEpoch",
+        "kind": "nested"
+      }
+    ]
+  }
+]
