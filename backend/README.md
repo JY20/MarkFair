@@ -32,8 +32,16 @@ docker compose up -d
 3. Create virtual environment and install dependencies:
 
 ```bash
+# Create virtual environment
 python3 -m venv .venv
+
+# Activate virtual environment
+# For Linux/macOS:
 source .venv/bin/activate
+# For Windows:
+.venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
