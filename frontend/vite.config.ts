@@ -7,4 +7,20 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          clerk: ['@clerk/clerk-react'],
+          starknet: ['@starknet-react/core', 'starknet'],
+        },
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    open: true,
+  },
 });

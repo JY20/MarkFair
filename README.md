@@ -140,6 +140,11 @@ For detailed integration guides, see `contract/instructions/`.
 - **Wallet Integration**: Argent X, Braavos
 - **Token Standard**: ERC-20 compatible
 
+## 🌐 Live Application
+
+**Production Frontend:** [https://www.markfair.xyz/](https://www.markfair.xyz/)  
+**Production Backend API:** [https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net/](https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net/)
+
 ## Getting Started
 
 ### Prerequisites
