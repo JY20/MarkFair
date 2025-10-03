@@ -6,6 +6,13 @@
 
 MarkFair Frontend Application - A Web3 Marketing Platform Connecting Brands with KOLs
 
+## 🌐 Live Application
+
+**Production Frontend:** [https://www.markfair.xyz/](https://www.markfair.xyz/)  
+**Production Backend API:** [https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net/](https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net/)
+
+The live application is deployed and ready for testing. Users can connect their wallets, create accounts, and interact with the platform's features.
+
 ## 🚀 Tech Stack
 
 - **Framework**: React 18 + TypeScript
@@ -81,8 +88,9 @@ MarkFair Frontend Application - A Web3 Marketing Platform Connecting Brands with
    # Clerk Authentication
    VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
    
-   # Backend API URL
-   VITE_API_BASE_URL=http://localhost:8000
+   # Backend API URL (use production URL for testing)
+   VITE_API_BASE_URL=https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net
+   # For local development, use: VITE_API_BASE_URL=http://localhost:8000
    
    # Starknet Network Configuration
    VITE_STARKNET_NETWORK=sepolia
