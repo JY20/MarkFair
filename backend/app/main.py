@@ -34,8 +34,6 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-# @app.on_event("startup")
-# def on_startup() -> None:
-#     init_engine_and_create_tables()
-
-
+@app.on_event("startup")
+def on_startup() -> None:
+    init_engine_and_create_tables()
