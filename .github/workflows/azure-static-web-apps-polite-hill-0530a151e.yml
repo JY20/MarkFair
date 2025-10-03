@@ -45,6 +45,12 @@ jobs:
           action: "upload"
           app_location: "./frontend"
           output_location: "dist"
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          VITE_STARKNET_NETWORK: ${{ secrets.VITE_STARKNET_NETWORK }}
+          VITE_KOLESCROW_CONTRACT_ADDRESS: ${{ secrets.VITE_KOLESCROW_CONTRACT_ADDRESS }}
+          VITE_MARKFAIR_TOKEN_CONTRACT_ADDRESS: ${{ secrets.VITE_MARKFAIR_TOKEN_CONTRACT_ADDRESS }}
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
