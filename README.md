@@ -19,6 +19,41 @@ On MarkFair, brands can post campaigns or specific tasks, whether it's promoting
 - **Reputation System**: Built-in rating system for both brands and KOLs
 - **Direct Crypto Payments**: Fast and secure payments without intermediaries
 
+### Frontend Application Features
+
+#### 🔐 Authentication & Role Management
+- Secure authentication system with Clerk integration
+- Brand/KOL role selection and management
+- User profile and settings management
+
+#### 🌐 Blockchain Integration
+- Starknet wallet connection (Argent X, Braavos support)
+- Smart contract interaction for payments and escrow
+- Network switching between testnet and mainnet
+
+#### 📊 Task Management System
+- **Brand Features**:
+  - Create and publish marketing tasks
+  - Track task progress and submissions
+  - Manage payments and escrow releases
+  - View KOL applications and profiles
+- **KOL Features**:
+  - Browse task marketplace with filtering
+  - Apply for relevant tasks
+  - Submit completed work and claim payments
+  - Track earnings and task history
+
+#### 🎥 Social Media Integration
+- YouTube account connection and verification
+- Channel analytics and subscriber data
+- Content creation and submission tools
+
+#### 💼 Dashboard & Analytics
+- Personal data overview and statistics
+- Earnings tracking and payment history
+- Task performance metrics
+- Campaign ROI analysis
+
 ## What Makes Us Different
 
 What makes MarkFair stand out is the "Fair" part. Everything runs through smart contracts and escrow, so when a KOL finishes their task, payment is locked in and automatically released. Companies get the results they need, KOLs get rewarded instantly, and the whole process stays transparent, efficient, and trustless.
@@ -46,14 +81,18 @@ The bigger picture is simple. Web3 projects, especially early-stage startups, de
 ## Project Structure
 
 - `frontend/` - Frontend application code
-  - React-based web application with Web3 integration
-  - Responsive design for desktop and mobile users
-  - Integration with Starknet wallet providers
+  - **Framework**: React 18 + TypeScript with Vite build tool
+  - **Styling**: Tailwind CSS with responsive design
+  - **Authentication**: Clerk integration with role-based access
+  - **Blockchain**: Starknet React + get-starknet wallet integration
+  - **Features**: Task management, KOL marketplace, dashboard analytics
+  - **Animation**: Framer Motion for smooth user interactions
   
 - `backend/` - Backend server and API code
-  - FastAPI-based REST API service
-  - PostgreSQL database for user and campaign data
-  - Authentication via Clerk and wallet signatures
+  - **Framework**: FastAPI-based REST API service
+  - **Database**: PostgreSQL for user and campaign data
+  - **Authentication**: Clerk and wallet signature verification
+  - **Features**: Campaign management, payment processing, analytics
   
 - `contract/` - Blockchain smart contracts, scripts, and documentation
   - `src/` - Cairo smart contract source code
@@ -75,6 +114,32 @@ The bigger picture is simple. Web3 projects, especially early-stage startups, de
 
 For detailed integration guides, see `contract/instructions/`.
 
+## 🚀 Tech Stack
+
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Routing**: React Router DOM v7
+- **Authentication**: Clerk Authentication
+- **Blockchain**: Starknet React + get-starknet
+- **Animation**: Framer Motion
+- **Forms**: React Hook Form + Zod
+- **Icons**: Lucide React
+- **HTTP Client**: Axios
+
+### Backend
+- **Framework**: FastAPI (Python)
+- **Database**: PostgreSQL
+- **Authentication**: Clerk + wallet signatures
+- **API**: RESTful API design
+
+### Blockchain
+- **Network**: Starknet
+- **Smart Contracts**: Cairo
+- **Wallet Integration**: Argent X, Braavos
+- **Token Standard**: ERC-20 compatible
+
 ## Getting Started
 
 ### Prerequisites
@@ -83,6 +148,7 @@ For detailed integration guides, see `contract/instructions/`.
 - Python 3.9+ for backend
 - Docker for local development
 - Starknet wallet (Argent X or Braavos recommended)
+- Git for version control
 
 ### Installation
 
@@ -106,6 +172,47 @@ docker-compose up -d
 ```
 
 This will start the frontend, backend, and database services.
+
+### Available Scripts
+
+**Frontend Scripts:**
+```bash
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run linting
+npm run lint
+
+# Preview production build
+npm run preview
+```
+
+**Backend Scripts:**
+- Follow the backend README for available commands
+
+**Smart Contract Scripts:**
+- Merkle tree generation and verification scripts
+- Complete verification testing suite
+
+### Deployment
+
+**Frontend Deployment:**
+The frontend builds to static files that can be deployed to:
+- Vercel (recommended)
+- Netlify
+- GitHub Pages
+- AWS S3 + CloudFront
+
+**Backend Deployment:**
+- Docker containerization supported
+- Cloud platform deployment ready
+
+**Smart Contracts:**
+- Deployed on Starknet Sepolia (testnet)
+- Mainnet deployment planned for Q4 2025
 
 ## Contributing
 
