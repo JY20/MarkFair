@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from ..db.session import get_db
+from ..db.session import get_db_session
 from ..schemas.pool_schemas import ProofResponse, ProofRequest
 from ..services.auth import get_current_user, AuthenticatedUser
 from ..utils.merkle_utils import generate_merkle_proof
@@ -16,7 +16,7 @@ async def get_user_proof(
     epoch: Optional[int] = Query(None, description="Epoch number"),
     user: str = Query(..., description="User account address"),
     current_user: AuthenticatedUser = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Get merkle proof for a user in a specific pool and epoch

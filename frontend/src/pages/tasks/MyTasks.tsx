@@ -23,7 +23,7 @@ interface Task {
   platform: 'youtube';
   budget: number;
   applications?: number;
-  kolParticipants?: number; // KOL参与数量
+  kolParticipants?: number; // Number of KOL participants
   status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled' | 'applied' | 'in_progress' | 'pending_payment';
   createdAt: string;
   deadline: string;
