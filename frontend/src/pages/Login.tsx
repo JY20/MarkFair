@@ -51,7 +51,7 @@ export function Login() {
         <div className="bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl border border-gray-700">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
-            <p className="text-gray-400">Sign in to your AdForge account</p>
+            <p className="text-gray-400">Sign in to your MarkFair account</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

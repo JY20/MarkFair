@@ -38,7 +38,7 @@ export function RoleSelectionModal({ isOpen, onClose, onSelectRole }: RoleSelect
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-white mb-2">Choose Your Role</h2>
               <p className="text-gray-400">
-                Select how you want to use AdForge platform
+                Select how you want to use MarkFair platform
               </p>
             </div>
 

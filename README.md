@@ -4,67 +4,48 @@
   <img src="markfair_logo.png" alt="MarkFair Logo" width="500"/>
 </p>
 
-MarkFair is a marketing hub built for the Web3 era. Startups and companies are always looking for ways to get the word out, and KOLs (Key Opinion Leaders) and online creators are always looking for new opportunities. MarkFair connects the two worlds.
+## Inspiration
 
-## Overview
+Web3 startups struggle to get noticed, while KOLs and creators spend hours chasing opportunities. Traditional campaigns lack transparency and security — both advertisers and creators risk being "rugged." We wanted a **fair, efficient way** to connect the two worlds with on-chain escrow and verifiable attribution.
 
-On MarkFair, brands can post campaigns or specific tasks, whether it's promoting a launch, creating content, or building community hype, and KOLs can pick them up, get the job done, and earn crypto directly. No endless DMs, no messy negotiations, just a clean platform where both sides know what they're getting.
+## What it does
 
-### Key Features
+- **Advertisers**: Create campaigns and deposit funds into a Starknet escrow contract.  
+- **KOLs**: Receive personalized shortlinks to share with their audiences.  
+- **Users**: Simply click the link — attribution is seamless, no extra steps.  
+- **Settlement**: At the end of each epoch, a Merkle Root is generated. Advertisers can review results, KOLs can claim their rewards, and unclaimed funds are automatically refunded to advertisers.
 
-- **Smart Contract Escrow**: Secure payment system using Starknet blockchain technology
-- **Campaign Management**: Create, track, and manage marketing campaigns in one place
-- **KOL Discovery**: Find the right influencers for your specific needs and target audience
-- **Performance Analytics**: Track campaign effectiveness with detailed metrics
-- **Reputation System**: Built-in rating system for both brands and KOLs
-- **Direct Crypto Payments**: Fast and secure payments without intermediaries
+## How we built it
 
-### Frontend Application Features
+- **Frontend**: React + Clerk for authentication and campaign/KOL dashboards.  
+- **Backend**: FastAPI for shortlink generation, attribution binding, and ROI aggregation.  
+- **On-chain**: Starknet smart contracts using OpenZeppelin-based Merkle Root verification to secure escrow deposits and epoch-based settlements.
 
-#### 🔐 Authentication & Role Management
-- Secure authentication system with Clerk integration
-- Brand/KOL role selection and management
-- User profile and settings management
+## Challenges we ran into
 
-#### 🌐 Blockchain Integration
-- Starknet wallet connection (Argent X, Braavos support)
-- Smart contract interaction for payments and escrow
-- Network switching between testnet and mainnet
+- **Documentation mismatch**: Starknet docs and OpenZeppelin standards differed, requiring significant work to standardize Merkle Root generation.  
+- **Settlement design**: Needed to balance KOL claims with advertiser safety; we chose a model where unclaimed rewards are refunded to advertisers.  
+- **Seamless attribution**: Designed shortlink-based binding for a frictionless user experience.
 
-#### 📊 Task Management System
-- **Brand Features**:
-  - Create and publish marketing tasks
-  - Track task progress and submissions
-  - Manage payments and escrow releases
-  - View KOL applications and profiles
-- **KOL Features**:
-  - Browse task marketplace with filtering
-  - Apply for relevant tasks
-  - Submit completed work and claim payments
-  - Track earnings and task history
+## Accomplishments that we're proud of
 
-#### 🎥 Social Media Integration
-- YouTube account connection and verification
-- Channel analytics and subscriber data
-- Content creation and submission tools
+- Built a working MVP demonstrating **secure on-chain escrow + Merkle Root settlements**.  
+- Achieved **frictionless attribution** with shortlink-based binding.  
+- Established a complete pipeline: advertiser deposit → KOL distribution → user click → ROI tracking → settlement/refund.
 
-#### 💼 Dashboard & Analytics
-- Personal data overview and statistics
-- Earnings tracking and payment history
-- Task performance metrics
-- Campaign ROI analysis
+## What we learned
 
-## What Makes Us Different
+- **ROI is the real KPI**: Web3 marketing success depends on proving ROI, not just raw user counts.  
+- **User experience is king**: Invisible attribution flows increase adoption.  
+- **Standardization is critical**: Documentation and library divergence makes standardization essential.
 
-What makes MarkFair stand out is the "Fair" part. Everything runs through smart contracts and escrow, so when a KOL finishes their task, payment is locked in and automatically released. Companies get the results they need, KOLs get rewarded instantly, and the whole process stays transparent, efficient, and trustless.
+## What's next for MarkFair
 
-### Technical Advantages
-
-- **Trustless Execution**: Smart contracts ensure all parties fulfill their obligations
-- **Low Fees**: Minimal platform fees compared to traditional marketing agencies
-- **Transparent Process**: All transactions and campaign details are verifiable on-chain
-- **Cross-Chain Compatibility**: Support for multiple blockchain ecosystems (planned)
-- **Decentralized Governance**: Community-driven platform development (roadmap)
+1. **Standardized ROI metrics**: Use NFT/token mints on link click for public, transparent ROI tracking.  
+2. **Multi-platform expansion**: Support TikTok, Twitter(X), Xiaohongshu, and more.  
+3. **AI matching engine**: Recommend optimal KOL–advertiser pairings for efficient campaigns.  
+4. **Dynamic escrow pools**: Support epoch-based fund release (e.g. 3-month campaign, payouts every 3 days) for better liquidity.  
+5. **Yield integration**: Stake escrowed funds to offset lock-up costs and generate yield for advertisers.
 
 ## Vision
 
@@ -159,8 +140,8 @@ For detailed integration guides, see `contract/instructions/`.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/markfair.git
-   cd markfair
+   git clone https://github.com/JY20/MarkFair.git
+   cd MarkFair
    ```
 
 2. Set up each component:
@@ -226,3 +207,13 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Connect With Us
+
+- **GitHub**: [@JY20/MarkFair](https://github.com/JY20/MarkFair)
+- **X (Twitter)**: [@markfairxyz](https://x.com/markfairxyz)
+- **Discord**: [Join our community](https://discord.gg/9PqNYPhKng)
+
+---
+
+**MarkFair** - Making Web3 marketing simpler, more transparent, and fairer 🚀
