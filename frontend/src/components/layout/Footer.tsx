@@ -1,5 +1,5 @@
-import React from 'react';
-import { Github, Twitter, MessageCircle } from 'lucide-react';
+import { FaGithub, FaEnvelope } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 
 export function Footer() {
   return (
@@ -19,22 +19,29 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <a
-                href="#"
-                className="text-gray-400 hover:text-primary-400 transition-colors"
+                href="https://x.com/markfairxyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-primary-400 transition-all duration-300 hover:scale-110"
+                title="Follow us on X"
               >
-                <Twitter className="h-5 w-5" />
+                <FaXTwitter className="h-6 w-6" />
               </a>
               <a
-                href="#"
-                className="text-gray-400 hover:text-primary-400 transition-colors"
+                href="https://github.com/JY20/MarkFair"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-primary-400 transition-all duration-300 hover:scale-110"
+                title="View our GitHub repository"
               >
-                <Github className="h-5 w-5" />
+                <FaGithub className="h-6 w-6" />
               </a>
               <a
-                href="#"
-                className="text-gray-400 hover:text-primary-400 transition-colors"
+                href="mailto:contact@markfair.xyz"
+                className="text-gray-400 hover:text-primary-400 transition-all duration-300 hover:scale-110"
+                title="Contact us via email"
               >
-                <MessageCircle className="h-5 w-5" />
+                <FaEnvelope className="h-6 w-6" />
               </a>
             </div>
           </div>

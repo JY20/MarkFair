@@ -61,7 +61,7 @@ export function Register() {
       >
         <div className="bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl border border-gray-700">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-2">Join AdForge</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">Join MarkFair</h2>
             <p className="text-gray-400">Create your account and start earning</p>
           </div>
 
