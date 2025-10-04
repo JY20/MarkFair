@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers.health import router as health_router
 from .routers.youtube import router as youtube_router
+from .routers.user import router as user_router
 from .routers.wallet import router as wallet_router
 from .db.session import init_engine_and_create_tables
 from .routers.merkle_router import router as merkle_router
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     app.include_router(merkle_router, prefix="/api/merkle")
     app.include_router(finalize_router, prefix="/api/finalize")
     app.include_router(youtube_router, prefix="/api/youtube")
+    app.include_router(user_router)
     app.include_router(wallet_router, prefix="/api/wallet")
     app.include_router(pool_router, prefix="/api/pools")
 
