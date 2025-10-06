@@ -4,6 +4,7 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 from web3 import Web3
 import json
+from ..core.config import settings
 
 def domain_hash_finalize(
     pool_id: int, 
@@ -40,9 +41,8 @@ def domain_hash_finalize(
     # Create array of elements similar to the contract implementation
     elements = [
         'KOL_FINALIZE',
-        # Note: In a real implementation, you would use the actual contract address
-        # For now we'll use a placeholder
-        '0x0000000000000000000000000000000000000000',  
+        # Use the actual contract address from config
+        settings.kolescrow_contract_address,  
         pool_id,
         epoch,
         merkle_root_int,

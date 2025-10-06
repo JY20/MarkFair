@@ -8,6 +8,7 @@ from .db.session import init_engine_and_create_tables
 from .routers.merkle_router import router as merkle_router
 from .routers.finalize_router import router as finalize_router
 from .routers.pool_router import router as pool_router
+from .routers.contract_router import router as contract_router
 
 def create_app() -> FastAPI:
     app = FastAPI(title="MarkFair API", version="0.1.0")
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     app.include_router(user_router)
     app.include_router(wallet_router, prefix="/api/wallet")
     app.include_router(pool_router, prefix="/api/pools")
+    app.include_router(contract_router, prefix="/api/contract")
 
     return app
 
