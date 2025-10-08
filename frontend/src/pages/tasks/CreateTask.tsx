@@ -16,8 +16,9 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useContract } from '@starknet-react/core';
+import { useAccount } from '@starknet-react/core';
 import { MARKFAIR_TOKEN_ABI, KOL_ABI, MARKFAIR_TOKEN_ADDRESS, KOL_ADDRESS } from '../../constants';
+import { TokenContract}  from '../../helpers/TokenContract';
 
 const createTaskSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -36,10 +37,9 @@ export function CreateTask() {
   const { wallet } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newRequirement, setNewRequirement] = useState('');
-  const { contract } = useContract({
-    abi: MARKFAIR_TOKEN_ABI,
-    address: MARKFAIR_TOKEN_ADDRESS,
-  });
+  const { address, account, isConnected, isDisconnected } = useAccount();
+  const contract = new TokenContract();
+
 
   const {
     register,
@@ -102,12 +102,25 @@ export function CreateTask() {
 
   const handleTest = async () => {
     console.log('wallet', wallet);
-    const balance = await contract?.balanceOf(wallet?.address);
-    console.log('contract', balance);
-    const poolInfo = await contract?.total_supply(); 
-    const poolInfo2 = await contract?.approve(KOL_ADDRESS, "0x2001");
+    console.log(address)
+    if (isDisconnected) {
+      console.log('isDisconnected');
+      return ;
+    }
+    if (isConnected) {
+      const balance = await contract.getWalletBalance(address);
+      console.log(balance)
+      const approve = await contract.Approve(KOL_ADDRESS, 3, account);
+      console.log(approve)
+    }
 
-    console.log('poolInfo', poolInfo);
+    // if (!contract) return;
+    // await connectAsync();
+    // const test = await contract?.approve(KOL_ADDRESS, "3000000000000000000");
+    // // let calls =  [{call}]
+    // // const tx = await send(calls);
+    // // console.log(data)
+    // console.log(test)
   };
 
   return (
@@ -405,7 +418,7 @@ export function CreateTask() {
             </div>
           </div>
         </form>
-        <div onClick={handleTest}>test</div>
+        <div onClick={handleTest}>测试合约</div>
       </motion.div>
     </div>
   );
