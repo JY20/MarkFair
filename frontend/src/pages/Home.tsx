@@ -141,7 +141,7 @@ export function Home() {
               className="text-center mb-16"
             >
               <h2 className="text-4xl font-bold text-white mb-4">
-                Why Choose AdForge?
+                Why Choose MarkFair?
               </h2>
               <p className="text-xl text-gray-400 max-w-2xl mx-auto">
                 Experience the next generation of digital advertising with blockchain security and transparency
@@ -178,7 +178,7 @@ export function Home() {
               className="text-center mb-16"
             >
               <h2 className="text-4xl font-bold text-white mb-4">
-                How AdForge Works
+                How MarkFair Works
               </h2>
               <p className="text-xl text-gray-400">
                 Simple, transparent, and efficient
@@ -303,7 +303,7 @@ export function Home() {
                 Ready to Transform Your Advertising?
               </h2>
               <p className="text-xl text-gray-300 mb-8">
-                Join thousands of advertisers and KOLs already using AdForge
+                Join thousands of advertisers and KOLs already using MarkFair
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link

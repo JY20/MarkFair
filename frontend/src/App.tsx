@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { useUser } from '@clerk/clerk-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { StarknetProvider } from './providers/StarknetProvider';
@@ -11,6 +12,7 @@ import { CreateTask } from './pages/tasks/CreateTask';
 import { TaskHall } from './pages/tasks/TaskHall';
 import { YouTubeConnect } from './pages/YouTubeConnect';
 import { RoleSelectionModal } from './components/RoleSelectionModal';
+import { SEO, pageSEO } from './components/SEO';
 
 function AppContent() {
   const { isSignedIn, isLoaded } = useUser();
@@ -40,59 +42,104 @@ function AppContent() {
     <>
       <Router>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={
+            <>
+              <SEO {...pageSEO.home} />
+              <Home />
+            </>
+          } />
           
           {/* Protected Dashboard Routes */}
           {isSignedIn ? (
             <>
               <Route path="/dashboard" element={
-                <DashboardLayout>
-                  <Dashboard />
-                </DashboardLayout>
+                <>
+                  <SEO {...pageSEO.dashboard} />
+                  <DashboardLayout>
+                    <Dashboard />
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/tasks/my-tasks" element={
-                <DashboardLayout>
-                  <MyTasks />
-                </DashboardLayout>
+                <>
+                  <SEO 
+                    title="My Tasks - MarkFair"
+                    description="View and manage your assigned marketing tasks. Track progress and submit completed work for payment."
+                    keywords="my tasks, task management, KOL tasks, brand tasks, task tracking"
+                  />
+                  <DashboardLayout>
+                    <MyTasks />
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/tasks/create" element={
-                <DashboardLayout>
-                  <CreateTask />
-                </DashboardLayout>
+                <>
+                  <SEO {...pageSEO.createTask} />
+                  <DashboardLayout>
+                    <CreateTask />
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/tasks" element={
-                <DashboardLayout>
-                  <TaskHall />
-                </DashboardLayout>
+                <>
+                  <SEO {...pageSEO.tasks} />
+                  <DashboardLayout>
+                    <TaskHall />
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/youtube-connect" element={
-                <DashboardLayout>
-                  <YouTubeConnect />
-                </DashboardLayout>
+                <>
+                  <SEO {...pageSEO.youtubeConnect} />
+                  <DashboardLayout>
+                    <YouTubeConnect />
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/analytics" element={
-                <DashboardLayout>
-                  <div className="p-8">
-                    <h1 className="text-3xl font-bold text-white">Analytics</h1>
-                    <p className="text-gray-400 mt-2">Coming soon...</p>
-                  </div>
-                </DashboardLayout>
+                <>
+                  <SEO 
+                    title="Analytics - MarkFair"
+                    description="View detailed analytics and performance metrics for your marketing campaigns and KOL activities."
+                    keywords="analytics, performance metrics, campaign analytics, marketing insights"
+                  />
+                  <DashboardLayout>
+                    <div className="p-8">
+                      <h1 className="text-3xl font-bold text-white">Analytics</h1>
+                      <p className="text-gray-400 mt-2">Coming soon...</p>
+                    </div>
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/wallet" element={
-                <DashboardLayout>
-                  <div className="p-8">
-                    <h1 className="text-3xl font-bold text-white">Wallet</h1>
-                    <p className="text-gray-400 mt-2">Coming soon...</p>
-                  </div>
-                </DashboardLayout>
+                <>
+                  <SEO 
+                    title="Wallet - MarkFair"
+                    description="Manage your crypto wallet, view balances, and track payment history on the MarkFair platform."
+                    keywords="crypto wallet, blockchain wallet, payment history, wallet management"
+                  />
+                  <DashboardLayout>
+                    <div className="p-8">
+                      <h1 className="text-3xl font-bold text-white">Wallet</h1>
+                      <p className="text-gray-400 mt-2">Coming soon...</p>
+                    </div>
+                  </DashboardLayout>
+                </>
               } />
               <Route path="/settings" element={
-                <DashboardLayout>
-                  <div className="p-8">
-                    <h1 className="text-3xl font-bold text-white">Settings</h1>
-                    <p className="text-gray-400 mt-2">Coming soon...</p>
-                  </div>
-                </DashboardLayout>
+                <>
+                  <SEO 
+                    title="Settings - MarkFair"
+                    description="Configure your MarkFair account settings, preferences, and profile information."
+                    keywords="account settings, user preferences, profile settings, account management"
+                  />
+                  <DashboardLayout>
+                    <div className="p-8">
+                      <h1 className="text-3xl font-bold text-white">Settings</h1>
+                      <p className="text-gray-400 mt-2">Coming soon...</p>
+                    </div>
+                  </DashboardLayout>
+                </>
               } />
             </>
           ) : (
@@ -108,7 +155,7 @@ function AppContent() {
       <RoleSelectionModal
         isOpen={showRoleModal}
         onClose={() => setShowRoleModal(false)}
-        onSelectRole={(role) => {
+        onSelectRole={() => {
           // Role is already saved in the modal component
           setShowRoleModal(false);
         }}
@@ -119,11 +166,13 @@ function AppContent() {
 
 function App() {
   return (
-    <StarknetProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </StarknetProvider>
+    <HelmetProvider>
+      <StarknetProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </StarknetProvider>
+    </HelmetProvider>
   );
 }
 

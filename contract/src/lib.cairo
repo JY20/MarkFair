@@ -58,7 +58,7 @@ pub trait IKolEscrow<TContractState> {
         amount: core::integer::u256,
     );
 
-    // epoch 接口（唯一可信）
+    // epoch interface (only trusted)
     fn finalize_epoch(
         ref self: TContractState,
         pool_id: core::integer::u256,
@@ -81,7 +81,7 @@ pub trait IKolEscrow<TContractState> {
     );
     fn refund_and_close_epoch(ref self: TContractState, pool_id: core::integer::u256, epoch: u64, to: starknet::ContractAddress);
 
-    // 调试与前后端辅助
+    // debugging and frontend/backend utilities
     fn get_epoch_meta(self: @TContractState, pool_id: core::integer::u256, epoch: u64) -> crate::EpochMeta;
     fn get_finalize_nonce(self: @TContractState, pool_id: core::integer::u256, epoch: u64) -> u64;
     fn compute_domain_hash(self: @TContractState, pool_id: core::integer::u256, epoch: u64, merkle_root: felt252, total_shares: core::integer::u256, unit_k: core::integer::u256, deadline_ts: u64, nonce: u64) -> felt252;
@@ -141,7 +141,7 @@ mod KolEscrow {
     const STATUS_CREATED: u8 = 1_u8;
     const STATUS_FUNDED: u8 = 2_u8;
 
-    // 64 位阈值（用于 128x128->256 的精确乘法在 64x64 情况下无溢出）
+    // 64-bit threshold (for precise 128x128->256 multiplication without overflow in 64x64 case)
     const MAX_U64: u128 = 18446744073709551615_u128;
 
     #[storage]
@@ -151,14 +151,14 @@ mod KolEscrow {
         owner: ContractAddress,
         reentrancy_guard: bool,
         // V2: epoch data
-        // 统一使用 pools
+        // unified use of pools
         epoch_meta: Map<(u256, u64), super::EpochMeta>,
         claimed_epoch: Map<(u256, u64, u256), bool>,
         finalize_nonce: Map<(u256, u64), u64>,
     }
 
     fn pedersen_hash_many(inputs: Span<felt252>) -> felt252 {
-        // 保留工具函数（用于 domain_hash 等），与 leaf 双重哈希解耦
+        // retained utility function (for domain_hash etc), decoupled from leaf double hashing
         let n = inputs.len();
         let mut i = 0;
         let mut acc: felt252 = n.into();
@@ -169,18 +169,18 @@ mod KolEscrow {
         acc
     }
 
-    // 128x128 -> 256 精确乘法（当前约束：两数均不超过 2^64-1）
-    // 返回 u256，其中 high 始终为 0，low 为 128 位结果。
+    // 128x128 -> 256 precise multiplication (current constraint: both numbers <= 2^64-1)
+    // returns u256 where high is always 0, low is 128-bit result.
     fn mul_128x128_to_256_exact_low64(a: u128, b: u128) -> u256 {
         assert(a <= MAX_U64, ERR_OVERFLOW);
         assert(b <= MAX_U64, ERR_OVERFLOW);
-        let res_low: u128 = a * b; // 64x64 -> 128 位，精确无溢出
+        let res_low: u128 = a * b; // 64x64 -> 128 bits, precise no overflow
         u256 { low: res_low, high: 0 }
     }
 
     const LEAF_TAG: felt252 = 'KOL_LEAF';
 
-    // 计算包含所有参数的安全哈希，使用域标签
+    // compute secure hash containing all parameters, using domain tag
     fn compute_secure_hash(
         pool_id: u256,
         epoch: u64,
@@ -191,14 +191,14 @@ mod KolEscrow {
     ) -> felt252 {
         let hash_state = PedersenTrait::new(0);
         let finalized = hash_state
-            .update_with(LEAF_TAG)        // 域标签：明确叶子语义
+            .update_with(LEAF_TAG)        // domain tag: clarify leaf semantics
             .update_with(pool_id)
             .update_with(epoch)
             .update_with(index)
             .update_with(account)
             .update_with(shares)
             .update_with(amount)
-            .update_with(7_u8)  // 参数数量更新为7（包含域标签）
+            .update_with(7_u8)  // parameter count updated to 7 (including domain tag)
             .finalize();
         finalized
     }
@@ -211,15 +211,15 @@ mod KolEscrow {
         shares: u256,
         amount: u256,
     ) -> felt252 {
-        // 混合方法：安全哈希 + 标准叶子格式
-        // 第一步：计算包含所有参数的安全哈希
+        // hybrid method: secure hash + standard leaf format
+        // step 1: compute secure hash containing all parameters
         let secure_hash = compute_secure_hash(pool_id, epoch, index, account, shares, amount);
         
-        // 第二步：使用标准 OpenZeppelin 叶子哈希格式（不包含参数数量）
+        // step 2: use standard OpenZeppelin leaf hash format (excluding parameter count)
         let hash_state = PedersenTrait::new(0);
         let finalized = hash_state
             .update_with(account)
-            .update_with(secure_hash)  // 使用安全哈希替代简单amount
+            .update_with(secure_hash)  // use secure hash instead of simple amount
             .finalize();
         pedersen(0, finalized)
     }
@@ -257,7 +257,7 @@ mod KolEscrow {
     }
 
 
-    // 无锁内部实现：统一的 epoch 领取路径
+    // lock-free internal implementation: unified epoch claiming path
     fn _claim_epoch_internal(
         ref self: ContractState,
         pool_id: u256,
@@ -276,7 +276,7 @@ mod KolEscrow {
         assert(now <= em.deadline_ts, ERR_DEADLINE);
         if self.claimed_epoch.read((pool_id, epoch, index)) { assert(false, ERR_ALRDY); }
 
-        // 金额一致性：限制高位为0，使用 64x64->128 精确乘法
+        // amount consistency: restrict high bits to 0, use 64x64->128 precise multiplication
         assert(shares.high == 0, ERR_BAD_SHARES);
         assert(em.unit_k.high == 0, ERR_BAD_UNIT);
             let expected = mul_128x128_to_256_exact_low64(shares.low, em.unit_k.low);
@@ -286,7 +286,7 @@ mod KolEscrow {
         let ok = verify::<PedersenCHasher>(proof, em.merkle_root, leaf);
         assert(ok, 'BAD_PROOF');
 
-        // 先写状态与累计
+        // first write state and accumulate
         self.claimed_epoch.write((pool_id, epoch, index), true);
         let (new_claimed_epoch, of1) = em.claimed_amount.overflowing_add(amount);
         assert(!of1, ERR_OVERFLOW);
@@ -297,7 +297,7 @@ mod KolEscrow {
         p.total_claimed_amount = new_total_claimed;
         self.pools.write(pool_id, p);
 
-        // 再转账
+        // then transfer
         let erc20 = IERC20Dispatcher { contract_address: p.token };
         let ok2 = erc20.transfer(account, amount);
         assert(ok2, ERR_TOUT_FAIL);
@@ -380,7 +380,7 @@ mod KolEscrow {
             let existing: super::PoolInfo = self.pools.read(pool_id);
             assert(existing.status == 0_u8, ERR_POOL_EXISTS);
 
-            // 参数校验
+            // parameter validation
             assert(brand.into() != 0, ERR_BAD_BRAND);
             assert(token.into() != 0, ERR_BAD_TOKEN);
             assert(deadline_ts > 0, 'BAD_DEADLINE');
@@ -401,7 +401,7 @@ mod KolEscrow {
             refund_after_ts,
         };
         self.pools.write(pool_id, info);
-            // 初始化 epoch=0 的 nonce 为 0
+            // initialize epoch=0 nonce to 0
             self.finalize_nonce.write((pool_id, 0_u64), 0_u64);
         self.emit(Event::PoolCreated(PoolCreated { pool_id, brand, token }));
     }
@@ -457,7 +457,7 @@ mod KolEscrow {
             assert(p.status == STATUS_CREATED || p.status == STATUS_FUNDED, ERR_BAD_STATUS);
             assert(p.token == token, ERR_BAD_TOKEN);
 
-            // 代币转入
+            // token transfer in
             let erc20 = IERC20Dispatcher { contract_address: token };
             let this = starknet::get_contract_address();
             let ok = erc20.transferFrom(from, this, amount);
@@ -474,7 +474,7 @@ mod KolEscrow {
             non_reentrant_exit(ref self);
     }
 
-        // epoch 接口开始
+        // epoch interface starts
         fn finalize_epoch(
             ref self: ContractState,
             pool_id: u256,
@@ -493,7 +493,7 @@ mod KolEscrow {
             assert(unit_k > u256 { low: 0, high: 0 }, ERR_BAD_UNIT);
             let now = get_block_timestamp();
             assert(deadline_ts > now, 'BAD_DEADLINE');
-            // 域哈希 + ECDSA 验签 + nonce（使用 V2 公钥）
+            // domain hash + ECDSA signature verification + nonce (using V2 public key)
             let nonce: u64 = self.finalize_nonce.read((pool_id, epoch));
             let expected = domain_hash_finalize(pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts, nonce);
             assert(_msg_hash == expected, 'BAD_MSG');
@@ -517,7 +517,7 @@ mod KolEscrow {
             self.emit(Event::EpochFinalized(EpochFinalized { pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts }));
         }
 
-        // 无锁内部实现：统一的 epoch 领取路径
+        // lock-free internal implementation: unified epoch claiming path
         fn claim_epoch_with_transfer(
             ref self: ContractState,
             pool_id: u256,
@@ -543,7 +543,7 @@ mod KolEscrow {
             assert(em.status == 2_u8, ERR_BAD_STATUS);
             let now = get_block_timestamp();
             assert(now >= em.refund_after_ts, ERR_NOT_YET);
-            // 剩余 = total_shares*unit_k - claimed_amount（限制高位为0，使用 64x64->128 精确乘法）
+            // remaining = total_shares*unit_k - claimed_amount (restrict high bits to 0, use 64x64->128 precise multiplication)
             assert(em.total_shares.high == 0, ERR_BAD_SHARES);
             assert(em.unit_k.high == 0, ERR_BAD_UNIT);
             let required = mul_128x128_to_256_exact_low64(em.total_shares.low, em.unit_k.low);
@@ -560,9 +560,9 @@ mod KolEscrow {
             self.emit(Event::RefundEpoch(RefundEpoch { pool_id, epoch, to, remaining: rem }));
             non_reentrant_exit(ref self);
         }
-        // epoch 接口结束
+        // epoch interface ends
 
-        // 调试/辅助（实现 trait）
+        // debugging/utilities (implement trait)
         fn get_epoch_meta(self: @ContractState, pool_id: u256, epoch: u64) -> crate::EpochMeta {
             self.epoch_meta.read((pool_id, epoch))
         }
@@ -575,7 +575,7 @@ mod KolEscrow {
         domain_hash_finalize(pool_id, epoch, merkle_root, total_shares, unit_k, deadline_ts, nonce)
     }
 
-    // 只读：校验某个叶与 proof 是否匹配当前 epoch 的 merkle_root（便于脚本先本地预校验）
+    // read-only: verify if a leaf and proof match the current epoch's merkle_root (for script pre-validation)
     fn verify_epoch_proof(self: @ContractState, pool_id: u256, epoch: u64, index: u256, account: ContractAddress, shares: u256, amount: u256, proof: Span<felt252>) -> bool {
         let em: super::EpochMeta = self.epoch_meta.read((pool_id, epoch));
         let leaf = leaf_hash_pedersen(pool_id, epoch, index, account, shares, amount);

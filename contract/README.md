@@ -8,11 +8,11 @@ contract/
 │   ├── lib.cairo               # Main contract implementation
 │   └── markfair_token.cairo    # ERC20 token contract
 ├── scripts/                           # JavaScript scripts and tools
-│   ├── complete_verification.mjs      # 完整端到端验证测试（运维测试用）
-│   ├── backend_merkle_generator.mjs   # 后端Merkle生成器（后端集成用）
-│   ├── devnet_merkle_generator.mjs    # Devnet环境开发测试（前端开发用）
-│   ├── out.json                       # 生成的测试数据
-│   └── package.json                   # Node.js依赖配置
+│   ├── complete_verification.mjs      # Complete end-to-end verification test (for operations testing)
+│   ├── backend_merkle_generator.mjs   # Backend Merkle generator (for backend integration)
+│   ├── devnet_merkle_generator.mjs    # Devnet environment development test (for frontend development)
+│   ├── out.json                       # Generated test data
+│   └── package.json                   # Node.js dependency configuration
 ├── instructions/                # Documentation and guides
 │   ├── deploy_testnet.md       # Testnet deployment guide
 │   ├── merkle_tree.md          # Merkle Tree implementation guide
@@ -48,7 +48,7 @@ See `instructions/DEPLOY_TESTNET.md` for detailed steps.
 
 ### Starknet Sepolia Testnet
 
-- **KolEscrow**: `0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a` (最终优化版本)
+- **KolEscrow**: `0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a` (final optimized version)
 - **MarkFair Token**: `0x07cc3116574d1cb35face2e22a38052d1ddac612b34be2f37599431985e62ae9`
 
 ## Important Documentation

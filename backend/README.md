@@ -2,6 +2,12 @@
 
 This directory contains the backend server and API code for MarkFair. The backend handles data processing, authentication, and communication between the frontend and blockchain.
 
+## 🌐 Production API
+
+**Live API Endpoint:** [https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net/](https://markfair-api-hxfbajeza6hyfhdh.canadacentral-01.azurewebsites.net/)
+
+The production API is deployed on Azure App Service and provides all backend functionality for the MarkFair platform.
+
 ## Prerequisites
 
 - Python 3.9+
@@ -32,8 +38,16 @@ docker compose up -d
 3. Create virtual environment and install dependencies:
 
 ```bash
+# Create virtual environment
 python3 -m venv .venv
+
+# Activate virtual environment
+# For Linux/macOS:
 source .venv/bin/activate
+# For Windows:
+.venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 

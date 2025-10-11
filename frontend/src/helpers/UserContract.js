@@ -14,7 +14,32 @@ export class UserContract {
         const contractClass = await hash_provider.getClassByHash(classHash);
         return contractClass.abi;
     }
-    async () {
-
+    async getPool(pool_id) {
+        const abi = await this.getABI();
+        const contract = new Contract(abi, userContractAddress, hash_provider);
+        const info = await contract.call('get_pool', [pool_id]);
+        return info;
     }
+    async previewAmount(pool_id, epoch, shares) {
+        const abi = await this.getABI();
+        const contract = new Contract(abi, userContractAddress, hash_provider);
+        const result= await contract.call('preview_amount', CallData.compile({
+            pool_id: cairo.uint256(pool_id),
+            epoch: epoch,
+            shares: cairo.uint256(shares),
+          }));
+        return result;
+    }
+    async claim(pool_id,epoch,index,shares) {
+        const abi = await this.getABI();
+        const contract = new Contract(abi, userContractAddress, hash_provider);
+        const result= await contract.invoke('claim_epoch_with_transfer', CallData.compile({
+            pool_id: cairo.uint256(pool_id),
+            epoch: epoch,
+            index: cairo.uint256(index),
+            shares: cairo.uint256(shares),
+          }));
+        return result;
+    }
+    // TODO: 退款相关函数待服务端开发
 }

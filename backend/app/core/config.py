@@ -16,10 +16,11 @@ class Settings(BaseSettings):
 
     # YouTube (required for stats)
     youtube_api_key: str
+    
+    # Starknet Contract Addresses
+    kolescrow_contract_address: str = "0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
 
 settings = Settings()  # loaded at import;
-
-
