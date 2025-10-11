@@ -1,19 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, TrendingUp, X } from 'lucide-react';
 
 interface RoleSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectRole: (role: 'advertiser' | 'kol') => void;
+  onSelectRole: (role: 'advertiser' | 'kol') => Promise<void>;
 }
 
 export function RoleSelectionModal({ isOpen, onClose, onSelectRole }: RoleSelectionModalProps) {
-  const handleRoleSelect = (role: 'advertiser' | 'kol') => {
-    // Save role selection to localStorage
-    localStorage.setItem('userRole', role);
-    onSelectRole(role);
-    onClose();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRoleSelect = async (role: 'advertiser' | 'kol') => {
+    setIsLoading(true);
+    try {
+      await onSelectRole(role);
+      onClose();
+    } catch (error) {
+      console.error('Error setting user role:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -45,10 +53,12 @@ export function RoleSelectionModal({ isOpen, onClose, onSelectRole }: RoleSelect
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Advertiser Option */}
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleRoleSelect('advertiser')}
-                className="bg-gray-700/50 p-6 rounded-xl border border-gray-600 hover:border-primary-500/50 cursor-pointer transition-all group"
+                whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
+                onClick={() => !isLoading && handleRoleSelect('advertiser')}
+                className={`bg-gray-700/50 p-6 rounded-xl border border-gray-600 hover:border-primary-500/50 transition-all group ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                }`}
               >
                 <div className="text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
@@ -81,10 +91,12 @@ export function RoleSelectionModal({ isOpen, onClose, onSelectRole }: RoleSelect
 
               {/* KOL Option */}
               <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleRoleSelect('kol')}
-                className="bg-gray-700/50 p-6 rounded-xl border border-gray-600 hover:border-secondary-500/50 cursor-pointer transition-all group"
+                whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
+                onClick={() => !isLoading && handleRoleSelect('kol')}
+                className={`bg-gray-700/50 p-6 rounded-xl border border-gray-600 hover:border-secondary-500/50 transition-all group ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                }`}
               >
                 <div className="text-center">
                   <div className="w-16 h-16 bg-gradient-to-br from-secondary-500 to-primary-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
