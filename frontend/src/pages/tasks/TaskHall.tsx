@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Eye, 
-  DollarSign, 
-  Users, 
-  CheckCircle,
-  Youtube,
-  Filter,
+import { useNavigate } from 'react-router-dom';
+import {
   Search,
+  Filter,
+  DollarSign,
   Calendar,
-  Target
+  Users,
+  Target,
+  CheckCircle,
+  Eye,
+  Youtube,
+  X,
 } from 'lucide-react';
+import { Api } from '../../api';
+import { toast } from 'react-hot-toast';
 
 interface Task {
   id: string;
@@ -31,9 +35,14 @@ interface Task {
 }
 
 export function TaskHall() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [appliedTasks, setAppliedTasks] = useState<Set<string>>(new Set());
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string>('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Mock data for available tasks
   const [tasks] = useState<Task[]>([
@@ -127,9 +136,33 @@ export function TaskHall() {
   };
 
   const handleApplyTask = (taskId: string) => {
-    // Mock application logic
-    setAppliedTasks(prev => new Set([...prev, taskId]));
-    alert(`Successfully applied to task! The advertiser will review your application.`);
+    setCurrentTaskId(taskId);
+    setShowApplyModal(true);
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!videoUrl.trim()) {
+      toast.error('请输入YouTube视频地址');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await Api.post('/api/youtube/videos', { 
+        video_url: videoUrl,
+        task_id: currentTaskId 
+      });
+      toast.success('申请成功！');
+      setAppliedTasks(prev => new Set([...prev, currentTaskId]));
+      setShowApplyModal(false);
+      setVideoUrl('');
+      navigate('/my-tasks');
+    } catch (error) {
+      console.error('申请失败:', error);
+      toast.error('申请失败，请重试');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -315,6 +348,66 @@ export function TaskHall() {
               <p>No tasks found matching your criteria.</p>
               <p className="text-sm">Try adjusting your search or filters.</p>
             </div>
+          </div>
+        )}
+        
+        {/* Apply Modal */}
+        {showApplyModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-md w-full"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white">Apply for Task</h3>
+                <button 
+                  onClick={() => setShowApplyModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  YouTube Video URL
+                </label>
+                <input
+                  type="text"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-white placeholder-gray-400"
+                />
+                <p className="mt-2 text-xs text-gray-400">
+                  Please provide a link to your YouTube video that best represents your content for this task.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowApplyModal(false)}
+                  className="flex-1 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitApplication}
+                  disabled={isSubmitting}
+                  className="flex-1 py-2 px-4 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-all disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Application'
+                  )}
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </motion.div>

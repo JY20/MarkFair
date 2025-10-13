@@ -16,25 +16,23 @@ import { SEO, pageSEO } from './components/SEO';
 
 function AppContent() {
   const { isSignedIn, isLoaded } = useUser();
-  const { user, setUserRole, fetchUserProfile } = useAuth();
+  const { user, fetchUserProfile, isProfileLoaded, setUserRole } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
-    console.log('user', user);
+    // Only check for role when user is signed in and auth is loaded
     if (isSignedIn && isLoaded && user) {
-      // Check if user has a role set
-      fetchUserProfile().then((hasRole) => {
-        if (!hasRole) {
+      // Check if user profile is loaded and if user has a role set
+      if (isProfileLoaded) {
+        if (!user.role) {
           // No role set, show modal
           setShowRoleModal(true);
         }
-      }).catch(() => {
-        // Error occurred, could show error message
-      });
+      }
     }
-  }, [isSignedIn, isLoaded, user, fetchUserProfile]);
+  }, [isSignedIn, isLoaded, user, isProfileLoaded]);
 
-  if (!isLoaded) {
+  if (!isLoaded || (isSignedIn && !isProfileLoaded)) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading...</div>

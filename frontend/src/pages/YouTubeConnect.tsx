@@ -8,9 +8,13 @@ import {
   Eye, 
   Calendar,
   ExternalLink,
-  Unlink
+  Unlink,
+  Wallet
 } from 'lucide-react';
 import { Api } from '../api';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface YouTubeChannel {
   id: string;
@@ -24,9 +28,21 @@ interface YouTubeChannel {
 }
 
 export function YouTubeConnect() {
+  const { wallet } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [channel, setChannel] = useState<YouTubeChannel | null>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  useEffect(() => {
+    console.log(wallet)
+    // 检查是否已绑定钱包
+    if (!wallet) {
+      setShowWalletModal(true);
+    } else {
+      setShowWalletModal(false);
+    }
+  }, [wallet]);
 
   useEffect(() => {
     Api.get('/api/health')
@@ -104,7 +120,33 @@ export function YouTubeConnect() {
           </p>
         </div>
 
-        {!isConnected ? (
+        {showWalletModal ? (
+          /* Wallet Connection Required Card */
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 text-center">
+              <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Wallet className="h-8 w-8 text-yellow-500" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Wallet Connection Required
+              </h2>
+              
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                You need to connect your wallet before you can link your YouTube account.
+                This is required to verify your identity and secure your content creator status.
+              </p>
+
+              <a 
+                href="/dashboard" 
+                className="px-8 py-4 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition-all flex items-center space-x-3 mx-auto w-fit"
+              >
+                <Wallet className="h-5 w-5" />
+                <span>Connect Wallet</span>
+              </a>
+            </div>
+          </div>
+        ) : !isConnected ? (
           /* Connection Card */
           <div className="max-w-2xl mx-auto">
             <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700 text-center">

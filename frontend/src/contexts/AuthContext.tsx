@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { AuthState, User, WalletConnection } from '../types';
 import { Api, setAuthToken } from '../api';
@@ -9,6 +9,7 @@ interface AuthContextType extends AuthState {
   updateUser: (userData: Partial<User>) => void;
   setUserRole: (role: 'advertiser' | 'kol') => Promise<void>;
   fetchUserProfile: () => Promise<boolean>; // Return true if role is set, false if needs selection
+  isProfileLoaded: boolean; // Flag to indicate if profile has been loaded
 }
 
 type AuthAction =
@@ -72,13 +73,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const { user: clerkUser, isLoaded } = useUser();
   const { getToken } = useClerkAuth();
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+  const [profileFetchAttempted, setProfileFetchAttempted] = useState(false);
 
   const fetchUserProfile = async (): Promise<boolean> => {
+    if (profileFetchAttempted && isProfileLoaded) {
+      // Return cached result if we've already fetched the profile
+      return !!state.user?.role;
+    }
+    
     try {
       const token = await getToken({template: 'backend'});
-      console.log('token',token)
       setAuthToken(token);
       const profile = await Api.getUserProfile();
+      setProfileFetchAttempted(true);
+      setIsProfileLoaded(true);
+      
       if (profile.user_type) {
         // Convert API role to frontend role format
         const frontendRole = profile.user_type === 'KOL' ? 'kol' : 'advertiser';
@@ -88,6 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false; // No role set, needs selection
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setProfileFetchAttempted(true);
+      setIsProfileLoaded(true);
       return false; // Error occurred, assume needs selection
     }
   };
@@ -95,46 +107,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoaded) return;
     
-    const savedWallet = localStorage.getItem('wallet');
-    
     if (clerkUser) {
-      console.log('clerkUser',clerkUser)
-      
       // Convert Clerk user to our User type (role will be fetched from API)
       const userData: User = {
         id: clerkUser.id,
         address: '', // Will be set when wallet is connected
-        role: 'advertiser', // Default role, will be updated after API call
+        role: '', // Default role, will be updated after API call
         username: clerkUser.fullName || clerkUser.firstName || 'User',
         email: clerkUser.primaryEmailAddress?.emailAddress || '',
         avatar: clerkUser.imageUrl,
         createdAt: new Date(clerkUser.createdAt || Date.now()),
       };
       
-      try {
-        const wallet = savedWallet ? JSON.parse(savedWallet) : undefined;
-        dispatch({ type: 'SET_USER', payload: userData });
-        if (wallet) {
-          dispatch({ type: 'CONNECT_WALLET', payload: wallet });
-        }
-        
-        // Fetch user profile from API to get the actual role
+      dispatch({ type: 'SET_USER', payload: userData });
+      
+      // Fetch user profile from API to get the actual role
+      // Only fetch if we haven't already attempted
+      if (!profileFetchAttempted) {
         fetchUserProfile();
-      } catch (error) {
-        console.error('Error parsing saved wallet data:', error);
       }
     } else {
       dispatch({ type: 'SET_USER', payload: null });
+      setIsProfileLoaded(true); // Mark as loaded even if not authenticated
     }
   }, [clerkUser, isLoaded]);
 
   const connectWallet = (wallet: WalletConnection) => {
-    localStorage.setItem('wallet', JSON.stringify(wallet));
     dispatch({ type: 'CONNECT_WALLET', payload: wallet });
   };
 
   const disconnectWallet = () => {
-    localStorage.removeItem('wallet');
     dispatch({ type: 'DISCONNECT_WALLET' });
   };
 
@@ -146,12 +148,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setUserRole = async (role: 'advertiser' | 'kol') => {
     try {
-      const token = await getToken();
+      const token = await getToken({template: 'backend'});
       setAuthToken(token);
       // Convert frontend role to API role format
       const apiRole = role === 'kol' ? 'KOL' : 'Advertiser';
       await Api.setUserType({ user_type: apiRole });
       dispatch({ type: 'SET_USER_ROLE', payload: role });
+      return;
     } catch (error) {
       console.error('Error setting user role:', error);
       throw error;
@@ -167,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateUser,
         setUserRole,
         fetchUserProfile,
+        isProfileLoaded,
       }}
     >
       {children}

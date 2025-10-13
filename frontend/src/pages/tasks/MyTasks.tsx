@@ -198,7 +198,7 @@ export function MyTasks() {
     
     try {
       // Mock wallet transaction
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // await new Promise(resolve => setTimeout(resolve, 2000));
       alert(`Successfully claimed $${amount} for task completion!`);
       
       // Update task status (in real app, this would come from backend)
