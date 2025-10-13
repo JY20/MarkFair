@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { AuthState, User, WalletConnection } from '../types';
+import { Api, setAuthToken } from '../api';
 
 interface AuthContextType extends AuthState {
   connectWallet: (wallet: WalletConnection) => void;
   disconnectWallet: () => void;
   updateUser: (userData: Partial<User>) => void;
-  setUserRole: (role: 'advertiser' | 'kol') => void;
+  setUserRole: (role: 'advertiser' | 'kol') => Promise<void>;
+  fetchUserProfile: () => Promise<boolean>; // Return true if role is set, false if needs selection
 }
 
 type AuthAction =
@@ -69,20 +71,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const { user: clerkUser, isLoaded } = useUser();
+  const { getToken } = useClerkAuth();
+
+  const fetchUserProfile = async (): Promise<boolean> => {
+    try {
+      const token = await getToken({template: 'backend'});
+      console.log('token',token)
+      setAuthToken(token);
+      const profile = await Api.getUserProfile();
+      if (profile.user_type) {
+        // Convert API role to frontend role format
+        const frontendRole = profile.user_type === 'KOL' ? 'kol' : 'advertiser';
+        dispatch({ type: 'SET_USER_ROLE', payload: frontendRole });
+        return true; // Role is set
+      }
+      return false; // No role set, needs selection
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return false; // Error occurred, assume needs selection
+    }
+  };
 
   useEffect(() => {
     if (!isLoaded) return;
     
     const savedWallet = localStorage.getItem('wallet');
-    const savedRole = localStorage.getItem('userRole') as 'advertiser' | 'kol' | null;
     
     if (clerkUser) {
+      console.log('clerkUser',clerkUser)
       
-      // Convert Clerk user to our User type
+      // Convert Clerk user to our User type (role will be fetched from API)
       const userData: User = {
         id: clerkUser.id,
         address: '', // Will be set when wallet is connected
-        role: savedRole || 'advertiser', // Use saved role or default to advertiser
+        role: 'advertiser', // Default role, will be updated after API call
         username: clerkUser.fullName || clerkUser.firstName || 'User',
         email: clerkUser.primaryEmailAddress?.emailAddress || '',
         avatar: clerkUser.imageUrl,
@@ -95,6 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (wallet) {
           dispatch({ type: 'CONNECT_WALLET', payload: wallet });
         }
+        
+        // Fetch user profile from API to get the actual role
+        fetchUserProfile();
       } catch (error) {
         console.error('Error parsing saved wallet data:', error);
       }
@@ -119,9 +144,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setUserRole = (role: 'advertiser' | 'kol') => {
-    localStorage.setItem('userRole', role);
-    dispatch({ type: 'SET_USER_ROLE', payload: role });
+  const setUserRole = async (role: 'advertiser' | 'kol') => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      // Convert frontend role to API role format
+      const apiRole = role === 'kol' ? 'KOL' : 'Advertiser';
+      await Api.setUserType({ user_type: apiRole });
+      dispatch({ type: 'SET_USER_ROLE', payload: role });
+    } catch (error) {
+      console.error('Error setting user role:', error);
+      throw error;
+    }
   };
 
   return (
@@ -132,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         disconnectWallet,
         updateUser,
         setUserRole,
+        fetchUserProfile,
       }}
     >
       {children}

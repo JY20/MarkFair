@@ -125,14 +125,6 @@ export function CreateTask() {
       const status = await userContract.getPool('0x2001');
       console.log(status);
     }
-
-    // if (!contract) return;
-    // await connectAsync();
-    // const test = await contract?.approve(KOL_ADDRESS, "3000000000000000000");
-    // // let calls =  [{call}]
-    // // const tx = await send(calls);
-    // // console.log(data)
-    // console.log(test)
   };
 
   return (

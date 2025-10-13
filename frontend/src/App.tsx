@@ -16,19 +16,23 @@ import { SEO, pageSEO } from './components/SEO';
 
 function AppContent() {
   const { isSignedIn, isLoaded } = useUser();
-  const { user } = useAuth();
+  const { user, setUserRole, fetchUserProfile } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
     console.log('user', user);
     if (isSignedIn && isLoaded && user) {
-      // Check if user has selected a role
-      const savedRole = localStorage.getItem('userRole');
-      if (!savedRole) {
-        setShowRoleModal(true);
-      }
+      // Check if user has a role set
+      fetchUserProfile().then((hasRole) => {
+        if (!hasRole) {
+          // No role set, show modal
+          setShowRoleModal(true);
+        }
+      }).catch(() => {
+        // Error occurred, could show error message
+      });
     }
-  }, [isSignedIn, isLoaded, user]);
+  }, [isSignedIn, isLoaded, user, fetchUserProfile]);
 
   if (!isLoaded) {
     return (
@@ -155,8 +159,8 @@ function AppContent() {
       <RoleSelectionModal
         isOpen={showRoleModal}
         onClose={() => setShowRoleModal(false)}
-        onSelectRole={() => {
-          // Role is already saved in the modal component
+        onSelectRole={async (role) => {
+          await setUserRole(role);
           setShowRoleModal(false);
         }}
       />

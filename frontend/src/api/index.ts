@@ -47,14 +47,22 @@ export const http = {
   delete: async <T = unknown>(url: string, config?: AxiosRequestConfig) => request<T>({ ...config, method: "DELETE", url }),
 };
 
+// User API types
+export interface UserProfile {
+  user_type: string | null;
+}
+
+export interface SetUserTypeRequest {
+  user_type: 'KOL' | 'Advertiser';
+}
+
 // Unified API surface for endpoint paths to enable easy mocking.
 // Keep it minimal – callers can import { Api } and call Api.* with paths
 // derived from the OpenAPI docs at http://localhost:8000/docs#/
 export const Api = {
-  // Example usages (unopinionated, adapt to your docs):
-  // listTasks: () => http.get<Task[]>("/tasks"),
-  // getTask: (id: string) => http.get<Task>(`/tasks/${id}`),
-  // createTask: (payload: CreateTaskInput) => http.post<Task>("/tasks", payload),
+  // User APIs
+  getUserProfile: () => http.get<UserProfile>("/api/user/me"),
+  setUserType: (payload: SetUserTypeRequest) => http.post("/api/user/type", payload),
 
   // Generic passthrough for quick mocking based on Swagger paths
   get: http.get,
