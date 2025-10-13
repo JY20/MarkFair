@@ -4,8 +4,10 @@ const hash_provider = new RpcProvider({
   nodeUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
 });
 
-const classHash = "0x07d88c5ee12678cff834f98983696a9b5644831cb4fea4b6d462454b5d9c6e2b";
-const contractAddress = "0x075d470cb627938cb8f835fd01cab06b7fab0fbe4b2eeb2f6e6175edad0f98ec";
+const classHash =
+  "0x07d88c5ee12678cff834f98983696a9b5644831cb4fea4b6d462454b5d9c6e2b";
+const contractAddress =
+  "0x075d470cb627938cb8f835fd01cab06b7fab0fbe4b2eeb2f6e6175edad0f98ec";
 
 export class TokenContract {
   constructor() {}
@@ -17,7 +19,7 @@ export class TokenContract {
     const abi = await this.getABI();
     const contract = new Contract(abi, contractAddress, hash_provider);
     const balance = await contract.call("balance_of", [walletAddress]);
-    const convertedBalance = (Number(balance) / 1e18).toFixed(2);
+    const convertedBalance = (Number(balance) / 1000000).toFixed(2);
     return convertedBalance;
   }
   async Approve(kolEscrowAddress, amount, account) {
@@ -26,7 +28,7 @@ export class TokenContract {
     const abi = await this.getABI();
     console.log(abi);
     const contract = new Contract(abi, contractAddress, hash_provider);
-    const weiAmount = amount * 1e18;
+    const weiAmount = amount * 1000000;
 
     const tx = await contract.populate("approve", [
       kolEscrowAddress,
@@ -52,12 +54,5 @@ export class TokenContract {
     ]);
 
     return result;
-  }
-
-  async allowance(userAddress, kolEscrowAddress) {
-    const abi = await this.getABI();
-    const contract = new Contract(abi, userContractAddress, hash_provider);
-    const result= await contract.call('allowance', [userAddress, kolEscrowAddress]);
-  return result;
   }
 }

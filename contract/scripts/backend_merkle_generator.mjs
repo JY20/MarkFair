@@ -90,11 +90,14 @@ function computeSecureHash(pool_id, epoch, index, account, shares, amount) {
  */
 function customLeafHash(leafData) {
   const [account, secureHash] = leafData;
+
   let state = "0x0";
   state = hash.computePedersenHash(state, account);
   state = hash.computePedersenHash(state, secureHash);
+  
   // 不附加参数个数；与合约 leaf_hash_pedersen 一致：pedersen(0, finalized)
   const finalHash = hash.computePedersenHash("0x0", state);
+
   return normalizeHex(finalHash);
 }
 
@@ -145,11 +148,13 @@ function buildMerkleTree(
     return normalizeHexForLib(leafHash);
   });
 
+    
   // 使用SimpleMerkleTree构建树（禁用叶子排序，保持索引与输入一致）
   const tree = SimpleMerkleTree.of(leafHashes, {
     nodeHash: customNodeHash,
     sortLeaves: false,
   });
+
 
   // attach user data for subsequent processing
   tree.userData = users.map((user, index) => ({
