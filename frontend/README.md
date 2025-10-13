@@ -20,7 +20,7 @@ The live application is deployed and ready for testing. Users can connect their 
 - **Styling**: Tailwind CSS
 - **Routing**: React Router DOM v7
 - **Authentication**: Clerk Authentication
-- **Blockchain**: Starknet React + get-starknet
+- **Blockchain**: Starknet React
 - **Animation**: Framer Motion
 - **Forms**: React Hook Form + Zod
 - **Icons**: Lucide React
