@@ -24,11 +24,78 @@ export default function App() {
       </header>
       <main className="container">
         <SignedIn>
+          <UserTypeTester />
           <WalletLinkForm />
           <AddVideoForm />
         </SignedIn>
       </main>
     </>
+  );
+}
+
+function UserTypeTester() {
+  const { getToken } = useAuth();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [userType, setUserType] = useState<'KOL' | 'Advertiser' | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getToken({ template: 'backend' });
+      const res = await fetch(`${API_BASE}/api/user/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { user_type: 'KOL' | 'Advertiser' | null };
+      setUserType(data.user_type ?? null);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setType = async (type: 'KOL' | 'Advertiser') => {
+    setSaving(true);
+    setError(null);
+    try {
+      const token = await getToken({ template: 'backend' });
+      const res = await fetch(`${API_BASE}/api/user/type`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ user_type: type }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await load();
+    } catch (e: any) {
+      setError(e.message || 'Failed to set user type');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  return (
+    <div className="card">
+      <h2 className="card-title">Test: User Type</h2>
+      {loading ? <div className="muted">Loading…</div> : (
+        <div className="result-row">
+          <div className="result-label">Current type</div>
+          <div className="result-value">{userType ?? 'Not set'}</div>
+        </div>
+      )}
+      {error && <div className="alert error">{error}</div>}
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <button className="btn btn-secondary" disabled={saving} onClick={() => setType('KOL')}>Set KOL</button>
+        <button className="btn btn-secondary" disabled={saving} onClick={() => setType('Advertiser')}>Set Advertiser</button>
+        <button className="btn" disabled={loading} onClick={load}>Refresh</button>
+      </div>
+    </div>
   );
 }
 
