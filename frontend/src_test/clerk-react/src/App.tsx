@@ -81,7 +81,7 @@ function UserTypeTester() {
   useEffect(() => { load(); }, []);
 
   return (
-    <div className="card">
+    <div className="card" style={{ marginBottom: 16 }}>
       <h2 className="card-title">Test: User Type</h2>
       {loading ? <div className="muted">Loading…</div> : (
         <div className="result-row">
