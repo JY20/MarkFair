@@ -52,9 +52,8 @@ function normalizeHexForLib(h) {
  * Pedersen multi-element hash (for domain_hash_finalize)
  */
 function pedersenMany(fields) {
-  let acc = "0x" + fields.length.toString(16);
-  for (const f of fields) acc = hash.computePedersenHash(acc, f);
-  return acc;
+  const xs = fields.map((x) => normalizeHex(x));
+  return hash.computeHashOnElements(xs);
 }
 
 // ===== Merkle Tree Core Functions =====
@@ -92,15 +91,12 @@ function computeSecureHash(pool_id, epoch, index, account, shares, amount) {
 function customLeafHash(leafData) {
   const [account, secureHash] = leafData;
 
-  // simulate Cairo's PedersenTrait::new(0).update_with(...).finalize()
   let state = "0x0";
-
   state = hash.computePedersenHash(state, account);
   state = hash.computePedersenHash(state, secureHash);
-  state = hash.computePedersenHash(state, "0x2"); // parameter count
-
-  const finalized = state;
-  const finalHash = hash.computePedersenHash("0x0", finalized);
+  
+  // 不附加参数个数；与合约 leaf_hash_pedersen 一致：pedersen(0, finalized)
+  const finalHash = hash.computePedersenHash("0x0", state);
 
   return normalizeHex(finalHash);
 }
@@ -110,18 +106,14 @@ function customLeafHash(leafData) {
  * Numerically sorted commutative hash
  */
 function customNodeHash(left, right) {
-  const leftBig = BigInt(left);
-  const rightBig = BigInt(right);
-
-  let elements;
-  if (leftBig < rightBig) {
-    elements = [left, right, "0x2"];
-  } else {
-    elements = [right, left, "0x2"];
-  }
-
-  const serialized = elements.map((x) => normalizeHex(x));
-  const result = hash.computeHashOnElements(serialized);
+  const a = BigInt(left);
+  const b = BigInt(right);
+  const [lo, hi] = a <= b ? [left, right] : [right, left];
+  // 与 OZ PedersenCHasher 等价：computeHashOnElements([lo, hi])（内部会附加长度）
+  const result = hash.computeHashOnElements([
+    normalizeHex(lo),
+    normalizeHex(hi),
+  ]);
   return normalizeHexForLib(result);
 }
 
@@ -156,8 +148,13 @@ function buildMerkleTree(
     return normalizeHexForLib(leafHash);
   });
 
-  // use SimpleMerkleTree to build tree
-  const tree = SimpleMerkleTree.of(leafHashes, { nodeHash: customNodeHash });
+    
+  // 使用SimpleMerkleTree构建树（禁用叶子排序，保持索引与输入一致）
+  const tree = SimpleMerkleTree.of(leafHashes, {
+    nodeHash: customNodeHash,
+    sortLeaves: false,
+  });
+
 
   // attach user data for subsequent processing
   tree.userData = users.map((user, index) => ({
@@ -314,25 +311,35 @@ function generateMerkleData({
  * Example: How backend uses this module
  */
 function exampleUsage() {
-  // simulate backend data
+  // Atlas前端4人测试数据 - 总共10000 MKFR
   const users = [
     {
       account:
-        "0x064b48806902a367c8598f4f95c305e8c1a1acba5f082d294a43793113115691",
-      shares: 7n, // KOL1 gets 7 shares (consistent with Pool 104 test data)
+        "0x01fF290425e3fB08e3aaC216dfB5Bb41367218040946eDd0f186365326322930", // main/atlas
+      shares: 2500n, // 2500 MKFR (25%)
     },
     {
       account:
-        "0x1ea8da13e8ae65fe7e1fb368e174d50f1b9588305a4f12629c9eef467c4abee",
-      shares: 3n, // KOL2 gets 3 shares (consistent with Pool 104 test data)
+        "0x012B099F50C3CbCc82ccF7Ee557c9d60255c35C359eA6615435B761Ec3336EC8", // jimmy
+      shares: 2500n, // 2500 MKFR (25%)
+    },
+    {
+      account:
+        "0x0299970bA982112ab018832b2875fF750409d5239c1Cc056e98402d8D53Bd148", // leo
+      shares: 2500n, // 2500 MKFR (25%)
+    },
+    {
+      account:
+        "0x064167f58534A0D29EAb5e6813Cc116E6eC978009920108ee7aA15f0e8Ae7f2D", // 第4个人
+      shares: 2500n, // 2500 MKFR (25%)
     },
   ];
 
   const params = {
     users,
     contractAddress:
-      "0x0496202f5f0622e0fa42a6fc63e81ecc717972cb9fb7374257f793422a4c2a78",
-    pool_id: { low: 200n, high: 0n },
+      "0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a", // 最新KolEscrow地址
+    pool_id: { low: 0x2002n, high: 0n }, // Atlas可领取测试池
     epoch: 1n,
     deadline_ts: BigInt(Math.floor(Date.now() / 1000) + 86400), // 24 hours later
     nonce: 0n, // query current nonce from contract
