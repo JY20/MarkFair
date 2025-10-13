@@ -1,20 +1,20 @@
 /**
  * =============================================================================
- * 完整验证测试脚本 (Sepolia)
+ * COMPLETE VERIFICATION TEST SCRIPT (Sepolia)
  * =============================================================================
  *
- * 功能: 完整验证合约功能 - 从创建池到领取奖励的全流程
- * 合约地址: 0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a
+ * Function: Complete verification of contract functionality - full flow from pool creation to reward claiming
+ * Contract Address: 0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a
  *
- * 测试流程:
- * 1. 创建池
- * 2. 批准代币
- * 3. 资金池
- * 4. 生成Merkle数据
+ * Test Flow:
+ * 1. Create pool
+ * 2. Approve tokens
+ * 3. Fund pool
+ * 4. Generate Merkle data
  * 5. Finalize epoch
- * 6. 测试preview_amount
- * 7. 验证proof
- * 8. 领取奖励
+ * 6. Test preview_amount
+ * 7. Verify proof
+ * 8. Claim rewards
  * =============================================================================
  */
 
@@ -25,18 +25,18 @@ import { SimpleMerkleTree } from "@ericnordelo/strk-merkle-tree";
 
 const execAsync = promisify(exec);
 
-// 合约地址
+// contract addresses
 const ESCROW_CONTRACT =
   "0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a";
 const TOKEN_CONTRACT =
   "0x07cc3116574d1cb35face2e22a38052d1ddac612b34be2f37599431985e62ae9";
 
-// 测试参数
+// test parameters
 const POOL_ID = 400n;
 const EPOCH = 1n;
 const TOTAL_FUNDING = 10n * 1000000000000000000n; // 10 tokens
 
-// 用户数据
+// user data
 const users = [
   {
     account:
@@ -58,7 +58,7 @@ const ATTESTER_PRIV =
 const ATTESTER_PUB =
   "0x57f16e241689e66d3a7c9b35d4f09d7bb492d062a0fa2166a7a4b366b777fe1";
 
-// 工具函数
+// utility functions
 function normalizeHex(h) {
   if (typeof h === "bigint") h = "0x" + h.toString(16);
   if (typeof h === "number") h = "0x" + h.toString(16);
@@ -72,7 +72,7 @@ function normalizeHexForLib(h) {
   return normalized.length % 2 === 0 ? normalized : "0x0" + normalized.slice(2);
 }
 
-// 计算secure hash (Cairo equivalent)
+// compute secure hash (Cairo equivalent)
 function computeSecureHash(poolId, epoch, index, account, shares, amount) {
   const LEAF_TAG = shortString.encodeShortString("KOL_LEAF");
 
@@ -105,7 +105,7 @@ function computeSecureHash(poolId, epoch, index, account, shares, amount) {
   return current;
 }
 
-// 自定义叶子哈希函数
+// custom leaf hash function
 function customLeafHash(poolId, epoch, index, account, shares, amount) {
   const secureHash = computeSecureHash(
     poolId,
@@ -124,7 +124,7 @@ function customLeafHash(poolId, epoch, index, account, shares, amount) {
   return hash.computePedersenHash("0x0", current);
 }
 
-// 自定义节点哈希函数
+// custom node hash function
 function customNodeHash(left, right) {
   const leftBig = BigInt(left);
   const rightBig = BigInt(right);
@@ -138,7 +138,7 @@ function customNodeHash(left, right) {
   return normalizeHexForLib(current);
 }
 
-// 构建Merkle树
+// build Merkle tree
 function buildMerkleTreeCustom(users, poolId, epoch) {
   const leafHashes = users.map((user, index) => {
     const leafHash = customLeafHash(
@@ -160,14 +160,14 @@ function buildMerkleTreeCustom(users, poolId, epoch) {
   return tree;
 }
 
-// Pedersen多元素哈希
+// Pedersen multi-element hash
 function pedersenMany(fields) {
   let acc = "0x" + fields.length.toString(16);
   for (const f of fields) acc = hash.computePedersenHash(acc, f);
   return acc;
 }
 
-// 计算域哈希
+// compute domain hash
 function computeDomainHash(
   poolId,
   epoch,
@@ -195,7 +195,7 @@ function computeDomainHash(
   return pedersenMany(fields);
 }
 
-// 签名函数
+// signature function
 function signFinalize(
   poolId,
   epoch,
@@ -223,66 +223,66 @@ function signFinalize(
   };
 }
 
-// 执行命令并打印结果
+// execute command and print results
 async function runCommand(description, command) {
   console.log(`\n🔧 ${description}`);
-  console.log(`命令: ${command}`);
+  console.log(`Command: ${command}`);
 
   try {
     const { stdout, stderr } = await execAsync(command, {
       cwd: "/Users/ctrl/Desktop/Work/Starknet/MarkFair/contract",
     });
-    console.log("✅ 成功:", stdout.trim());
+    console.log("✅ Success:", stdout.trim());
     return { success: true, output: stdout.trim() };
   } catch (error) {
-    console.log("❌ 失败:", error.message);
+    console.log("❌ Failed:", error.message);
     return { success: false, error: error.message };
   }
 }
 
-// 主测试函数
+// main test function
 async function runCompleteVerification() {
-  console.log("🚀 开始完整验证测试\n");
-  console.log(`合约地址: ${ESCROW_CONTRACT}`);
-  console.log(`代币地址: ${TOKEN_CONTRACT}`);
-  console.log(`池ID: ${POOL_ID}`);
-  console.log(`用户1: ${users[0].account} (${users[0].shares} shares)`);
-  console.log(`用户2: ${users[1].account} (${users[1].shares} shares)`);
+  console.log("🚀 Starting complete verification test\n");
+  console.log(`Contract Address: ${ESCROW_CONTRACT}`);
+  console.log(`Token Address: ${TOKEN_CONTRACT}`);
+  console.log(`Pool ID: ${POOL_ID}`);
+  console.log(`User 1: ${users[0].account} (${users[0].shares} shares)`);
+  console.log(`User 2: ${users[1].account} (${users[1].shares} shares)`);
 
   const results = [];
 
   const now = Math.floor(Date.now() / 1000);
-  const deadlineTs = now + 86400; // 24小时后
-  const refundAfterTs = deadlineTs + 86400; // 48小时后
+  const deadlineTs = now + 86400; // 24 hours later
+  const refundAfterTs = deadlineTs + 86400; // 48 hours later
 
-  // 1. 创建池
+  // 1. Create pool
   let result = await runCommand(
-    "1️⃣ 创建池",
+    "1️⃣ Create Pool",
     `sncast invoke --network sepolia --contract-address ${ESCROW_CONTRACT} --function create_pool --calldata ${POOL_ID} 0 ${users[0].account} ${TOKEN_CONTRACT} ${ATTESTER_PUB} ${deadlineTs} ${refundAfterTs}`
   );
   results.push({ step: "create_pool", ...result });
 
   if (!result.success) {
-    console.log("❌ 创建池失败，停止测试");
+    console.log("❌ Pool creation failed, stopping test");
     return results;
   }
 
-  // 2. 批准代币
+  // 2. Approve tokens
   result = await runCommand(
-    "2️⃣ 批准代币",
+    "2️⃣ Approve Tokens",
     `sncast invoke --network sepolia --contract-address ${TOKEN_CONTRACT} --function approve --calldata ${ESCROW_CONTRACT} ${TOTAL_FUNDING} 0`
   );
   results.push({ step: "approve", ...result });
 
-  // 3. 资金池
+  // 3. Fund pool
   result = await runCommand(
-    "3️⃣ 资金池",
+    "3️⃣ Fund Pool",
     `sncast invoke --network sepolia --contract-address ${ESCROW_CONTRACT} --function fund_pool_with_transfer --calldata ${POOL_ID} 0 ${TOTAL_FUNDING} 0 ${TOKEN_CONTRACT} 0x1ea8da13e8ae65fe7e1fb368e174d50f1b9588305a4f12629c9eef467c4abee`
   );
   results.push({ step: "fund_pool", ...result });
 
-  // 4. 生成Merkle数据
-  console.log("\n4️⃣ 生成Merkle数据");
+  // 4. Generate Merkle data
+  console.log("\n4️⃣ Generate Merkle Data");
   const tree = buildMerkleTreeCustom(users, POOL_ID, EPOCH);
   const merkleRoot = tree.root;
   const totalShares = users.reduce((sum, user) => sum + user.shares, 0n);
@@ -293,7 +293,7 @@ async function runCompleteVerification() {
   console.log(`Total Shares: ${totalShares}`);
   console.log(`Unit K: ${unitK}`);
 
-  // 5. 生成签名
+  // 5. Generate signature
   const signature = signFinalize(
     POOL_ID,
     EPOCH,
@@ -309,24 +309,24 @@ async function runCompleteVerification() {
 
   // 6. Finalize epoch
   result = await runCommand(
-    "5️⃣ Finalize epoch",
+    "5️⃣ Finalize Epoch",
     `sncast invoke --network sepolia --contract-address ${ESCROW_CONTRACT} --function finalize_epoch --calldata ${POOL_ID} 0 ${EPOCH} ${merkleRoot} ${totalShares} 0 ${unitK} 0 ${deadlineTs} ${nonce} ${signature.msgHash} ${signature.r} ${signature.s}`
   );
   results.push({ step: "finalize_epoch", ...result });
 
   if (!result.success) {
-    console.log("❌ Finalize失败，停止测试");
+    console.log("❌ Finalize failed, stopping test");
     return results;
   }
 
-  // 7. 测试preview_amount
+  // 7. Test preview_amount
   result = await runCommand(
-    "6️⃣ 测试preview_amount",
+    "6️⃣ Test Preview Amount",
     `sncast call --network sepolia --contract-address ${ESCROW_CONTRACT} --function preview_amount --calldata ${POOL_ID} 0 ${EPOCH} ${users[0].shares} 0`
   );
   results.push({ step: "preview_amount", ...result });
 
-  // 8. 生成用户proofs并验证
+  // 8. Generate user proofs and verify
   const userProofs = users.map((user, index) => {
     const leafHash = customLeafHash(
       POOL_ID,
@@ -348,10 +348,10 @@ async function runCompleteVerification() {
     };
   });
 
-  // 9. 验证用户1的proof
+  // 9. Verify user 1's proof
   const user1Proof = userProofs[0];
   result = await runCommand(
-    "7️⃣ 验证用户1 proof",
+    "7️⃣ Verify User 1 Proof",
     `sncast call --network sepolia --contract-address ${ESCROW_CONTRACT} --function verify_epoch_proof --calldata ${POOL_ID} 0 ${EPOCH} ${
       user1Proof.index
     } 0 ${user1Proof.account} ${user1Proof.shares} 0 ${user1Proof.amount} 0 ${
@@ -360,9 +360,9 @@ async function runCompleteVerification() {
   );
   results.push({ step: "verify_proof_user1", ...result });
 
-  // 10. 用户1领取奖励
+  // 10. User 1 claim rewards
   result = await runCommand(
-    "8️⃣ 用户1领取奖励",
+    "8️⃣ User 1 Claim Rewards",
     `sncast invoke --network sepolia --contract-address ${ESCROW_CONTRACT} --function claim_epoch_with_transfer --calldata ${POOL_ID} 0 ${EPOCH} ${
       user1Proof.index
     } 0 ${user1Proof.account} ${user1Proof.shares} 0 ${user1Proof.amount} 0 ${
@@ -371,10 +371,10 @@ async function runCompleteVerification() {
   );
   results.push({ step: "claim_user1", ...result });
 
-  // 11. 验证用户2的proof
+  // 11. Verify user 2's proof
   const user2Proof = userProofs[1];
   result = await runCommand(
-    "9️⃣ 验证用户2 proof",
+    "9️⃣ Verify User 2 Proof",
     `sncast call --network sepolia --contract-address ${ESCROW_CONTRACT} --function verify_epoch_proof --calldata ${POOL_ID} 0 ${EPOCH} ${
       user2Proof.index
     } 0 ${user2Proof.account} ${user2Proof.shares} 0 ${user2Proof.amount} 0 ${
@@ -383,9 +383,9 @@ async function runCompleteVerification() {
   );
   results.push({ step: "verify_proof_user2", ...result });
 
-  // 12. 用户2领取奖励
+  // 12. User 2 claim rewards
   result = await runCommand(
-    "🔟 用户2领取奖励",
+    "🔟 User 2 Claim Rewards",
     `sncast invoke --network sepolia --contract-address ${ESCROW_CONTRACT} --function claim_epoch_with_transfer --calldata ${POOL_ID} 0 ${EPOCH} ${
       user2Proof.index
     } 0 ${user2Proof.account} ${user2Proof.shares} 0 ${user2Proof.amount} 0 ${
@@ -397,44 +397,44 @@ async function runCompleteVerification() {
   return results;
 }
 
-// 执行测试
+// execute test
 async function main() {
   try {
     const results = await runCompleteVerification();
 
-    console.log("\n\n📋 完整验证结果总结:");
+    console.log("\n\n📋 Complete Verification Results Summary:");
     console.log("===================");
 
     results.forEach((result, index) => {
-      const status = result.success ? "✅ 通过" : "❌ 失败";
+      const status = result.success ? "✅ Passed" : "❌ Failed";
       console.log(`${index + 1}. ${result.step}: ${status}`);
     });
 
     const successCount = results.filter((r) => r.success).length;
     const totalCount = results.length;
 
-    console.log(`\n🎯 总体结果: ${successCount}/${totalCount} 步骤成功`);
+    console.log(`\n🎯 Overall Result: ${successCount}/${totalCount} steps successful`);
 
     if (successCount === totalCount) {
-      console.log("🎉 完整验证成功！合约可以正常创建pool并领取奖励！");
+      console.log("🎉 Complete verification successful! Contract can normally create pools and claim rewards!");
     } else {
-      console.log("⚠️  部分步骤失败，请检查错误信息");
+      console.log("⚠️  Some steps failed, please check error messages");
     }
 
-    console.log("\n📝 验证的功能:");
-    console.log("- ✅ 创建池");
-    console.log("- ✅ 资金池");
-    console.log("- ✅ Merkle树生成");
+    console.log("\n📝 Verified Features:");
+    console.log("- ✅ Create pool");
+    console.log("- ✅ Fund pool");
+    console.log("- ✅ Merkle tree generation");
     console.log("- ✅ Epoch finalization");
-    console.log("- ✅ Preview amount计算");
-    console.log("- ✅ Proof验证");
-    console.log("- ✅ 奖励领取");
+    console.log("- ✅ Preview amount calculation");
+    console.log("- ✅ Proof verification");
+    console.log("- ✅ Reward claiming");
   } catch (error) {
-    console.error("❌ 测试执行出错:", error);
+    console.error("❌ Test execution error:", error);
   }
 }
 
-// 运行测试
+// run test
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }

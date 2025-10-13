@@ -15,6 +15,7 @@ dist/
 out/
 
 # Environment variables
+.venv/
 .env
 .env.local
 .env.development.local
@@ -104,3 +105,9 @@ contract/Scarb.lock
 **/.snfoundry-cache/
 **/.starknet_artifacts.json
 **/*.contract_class.json
+
+# Python cache files
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
