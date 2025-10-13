@@ -6,35 +6,30 @@ import { z } from "zod";
 import {
   DollarSign,
   Calendar,
-  Target,
   AlertCircle,
   Wallet,
-  Plus,
-  X,
   Youtube,
   Users,
   CheckCircle,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAccount } from "@starknet-react/core";
 import {
-  MARKFAIR_TOKEN_ABI,
-  KOL_ABI,
   MARKFAIR_TOKEN_ADDRESS,
   KOL_ADDRESS,
 } from "../../constants";
 import { TokenContract } from "../../helpers/TokenContract";
 import { UserContract } from "../../helpers/UserContract";
+import { Api } from "../../api";
 
 const createTaskSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
   platform: z.enum(["youtube"]),
-  budget: z.number().min(100, "Minimum budget is $100"),
-  deadline: z.string().min(1, "Deadline is required"),
-  requirements: z
-    .array(z.string())
-    .min(1, "At least one requirement is needed"),
+  budget: z.number().min(0, "Minimum budget is $0 MarkFair Token"),
+  deadline_ts: z.number().min(1, "Deadline is required"),
+  refund_after_ts: z.number().min(1, "Refund after time is required"),
   minSubscribers: z.number().min(0, "Minimum subscribers must be 0 or more"),
   minLikes: z.number().min(0, "Minimum likes must be 0 or more"),
 });
@@ -44,7 +39,6 @@ type CreateTaskForm = z.infer<typeof createTaskSchema>;
 export function CreateTask() {
   const { wallet } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newRequirement, setNewRequirement] = useState("");
   const { address, account, isConnected, isDisconnected } = useAccount();
   const contract = new TokenContract();
   const userContract = new UserContract();
@@ -59,27 +53,12 @@ export function CreateTask() {
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
       platform: "youtube",
-      requirements: [],
       minSubscribers: 1000,
       minLikes: 100,
+      deadline_ts: Math.floor(Date.now() / 1000) + 86400, // 默认为当前时间+1天
+      refund_after_ts: Math.floor(Date.now() / 1000) + (86400 * 7), // 默认为当前时间+7天
     },
   });
-
-  const requirements = watch("requirements") || [];
-
-  const addRequirement = () => {
-    if (newRequirement.trim()) {
-      setValue("requirements", [...requirements, newRequirement.trim()]);
-      setNewRequirement("");
-    }
-  };
-
-  const removeRequirement = (index: number) => {
-    setValue(
-      "requirements",
-      requirements.filter((_, i) => i !== index)
-    );
-  };
 
   const onSubmit = async (data: CreateTaskForm) => {
     if (!wallet?.connected) {
@@ -89,19 +68,29 @@ export function CreateTask() {
 
     setIsSubmitting(true);
 
+
     try {
       // Mock wallet transaction
-      console.log("Processing payment...", data.budget);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Mock API call to create task
-      console.log("Creating task:", data);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      // TODO：切换到线上接口
+      /**
+       *  Api.post('/api/pools', {
+       *  token: MARKFAIR_TOKEN_ADDRESS,
+       * title: data.title,
+       * description: data.description,
+       * deadline_ts: data.deadline_ts,
+       * refund_after_ts: data.refund_after_ts,
+       * })
+       * 
+       *  */ 
+    const response = await fetch('http://localhost:5173/api/pools');
+    const getPool = await response.json();
+    console.log('getPool', getPool)
+    const result = await contract.Approve(KOL_ADDRESS, data?.budget, account);
+    console.log(result)
+    if (result?.transaction_hash) {
       alert("Task created successfully!");
-
-      // Reset form or redirect
-      window.location.href = "/tasks/my-tasks";
+      // window.location.href = "/tasks/my-tasks";
+    }
     } catch (error) {
       console.error("Failed to create task:", error);
       alert("Failed to create task. Please try again.");
@@ -110,21 +99,32 @@ export function CreateTask() {
     }
   };
 
-  const handleTest = async () => {
-    console.log("wallet", wallet);
-    console.log(address);
-    if (isDisconnected) {
-      console.log("isDisconnected");
-      return;
-    }
-    if (isConnected) {
-      const balance = await contract.getWalletBalance(address);
-      console.log(balance);
-      // const approve = await contract.Approve(KOL_ADDRESS, 3, account);
-      // console.log(approve);
-      const status = await userContract.getPool('0x2001');
-      console.log(status);
-    }
+  // const handleTest = async () => {
+  //   console.log("wallet", wallet);
+  //   console.log(address);
+  //   if (isDisconnected) {
+  //     console.log("isDisconnected");
+  //     return;
+  //   }
+  //   if (isConnected) {
+  //     const balance = await contract.getWalletBalance(address);
+  //     console.log(balance);
+  //     const approve = await contract.Approve(KOL_ADDRESS, 3, account);
+  //     console.log(approve);
+  //     const status = await userContract.getPool('0x2001');
+  //     console.log(status);
+  //   }
+  // };
+
+  // 将时间戳转换为日期字符串，用于日期选择器
+  const timestampToDateString = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    return date.toISOString().split('T')[0];
+  };
+
+  // 将日期字符串转换为时间戳
+  const dateStringToTimestamp = (dateString: string) => {
+    return Math.floor(new Date(dateString).getTime() / 1000);
   };
 
   return (
@@ -242,15 +242,14 @@ export function CreateTask() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-300">
-                      Budget (USD) *
+                      Budget (MarkFair Token) *
                     </label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <input
                         {...register("budget", { valueAsNumber: true })}
                         type="number"
-                        min="100"
-                        step="50"
+                        min="1"
                         className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-gray-400 transition-all"
                         placeholder="1000"
                       />
@@ -269,130 +268,98 @@ export function CreateTask() {
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <input
-                        {...register("deadline")}
                         type="date"
                         min={new Date().toISOString().split("T")[0]}
                         className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white transition-all"
+                        value={timestampToDateString(watch("deadline_ts"))}
+                        onChange={(e) => {
+                          setValue("deadline_ts", dateStringToTimestamp(e.target.value));
+                        }}
                       />
                     </div>
-                    {errors.deadline && (
+                    {errors.deadline_ts && (
                       <p className="text-red-400 text-sm mt-1">
-                        {errors.deadline.message}
+                        {errors.deadline_ts.message}
                       </p>
                     )}
                   </div>
                 </div>
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Refund After Date *
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="date"
+                      min={timestampToDateString(watch("deadline_ts"))}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white transition-all"
+                      value={timestampToDateString(watch("refund_after_ts"))}
+                      onChange={(e) => {
+                        setValue("refund_after_ts", dateStringToTimestamp(e.target.value));
+                      }}
+                    />
+                  </div>
+                  {errors.refund_after_ts && (
+                    <p className="text-red-400 text-sm mt-1">
+                      {errors.refund_after_ts.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-2">
+                    This is the date after which funds can be refunded if the task is not completed.
+                  </p>
+                </div>
               </div>
 
-              {/* Requirements */}
+              {/* YouTube Metrics */}
               <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700">
                 <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
-                  <Target className="h-5 w-5 text-primary-400 mr-2" />
-                  Requirements
+                  <Youtube className="h-5 w-5 text-red-500 mr-2" />
+                  YouTube Metrics
                 </h2>
-                <div className="space-y-6">
-                  {/* YouTube Metrics */}
-                  <div className="bg-gray-700/30 p-4 rounded-lg border border-gray-600">
-                    <h3 className="text-lg font-medium text-white mb-4 flex items-center">
-                      <Youtube className="h-5 w-5 text-red-500 mr-2" />
-                      YouTube Metrics
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-300">
-                          Minimum Subscribers
-                        </label>
-                        <div className="relative">
-                          <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <input
-                            {...register("minSubscribers", {
-                              valueAsNumber: true,
-                            })}
-                            type="number"
-                            min="0"
-                            step="100"
-                            className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-gray-400 transition-all"
-                            placeholder="1000"
-                          />
-                        </div>
-                        {errors.minSubscribers && (
-                          <p className="text-red-400 text-sm mt-1">
-                            {errors.minSubscribers.message}
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-300">
-                          Minimum Likes per Video
-                        </label>
-                        <div className="relative">
-                          <CheckCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <input
-                            {...register("minLikes", { valueAsNumber: true })}
-                            type="number"
-                            min="0"
-                            step="10"
-                            className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-gray-400 transition-all"
-                            placeholder="100"
-                          />
-                        </div>
-                        {errors.minLikes && (
-                          <p className="text-red-400 text-sm mt-1">
-                            {errors.minLikes.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Additional Requirements */}
-                  <div>
-                    <h3 className="text-lg font-medium text-white mb-4">
-                      Additional Requirements
-                    </h3>
-                    <div className="flex space-x-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Minimum Subscribers
+                    </label>
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <input
-                        value={newRequirement}
-                        onChange={(e) => setNewRequirement(e.target.value)}
-                        className="flex-1 px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-gray-400 transition-all"
-                        placeholder="e.g., Tech niche, English content, Regular uploads"
-                        onKeyPress={(e) =>
-                          e.key === "Enter" &&
-                          (e.preventDefault(), addRequirement())
-                        }
+                        {...register("minSubscribers", {
+                          valueAsNumber: true,
+                        })}
+                        type="number"
+                        min="0"
+                        step="100"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-gray-400 transition-all"
+                        placeholder="1000"
                       />
-                      <button
-                        type="button"
-                        onClick={addRequirement}
-                        className="px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </button>
                     </div>
-
-                    {requirements.length > 0 && (
-                      <div className="space-y-2 mt-4">
-                        {requirements.map((req, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between bg-gray-700/30 px-4 py-2 rounded-lg border border-gray-600"
-                          >
-                            <span className="text-gray-300">{req}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeRequirement(index)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                    {errors.minSubscribers && (
+                      <p className="text-red-400 text-sm mt-1">
+                        {errors.minSubscribers.message}
+                      </p>
                     )}
-
-                    {errors.requirements && (
-                      <p className="text-red-400 text-sm mt-2">
-                        {errors.requirements.message}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Minimum Likes per Video
+                    </label>
+                    <div className="relative">
+                      <CheckCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        {...register("minLikes", { valueAsNumber: true })}
+                        type="number"
+                        min="0"
+                        step="10"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-white placeholder-gray-400 transition-all"
+                        placeholder="100"
+                      />
+                    </div>
+                    {errors.minLikes && (
+                      <p className="text-red-400 text-sm mt-1">
+                        {errors.minLikes.message}
                       </p>
                     )}
                   </div>
@@ -429,10 +396,16 @@ export function CreateTask() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">
-                      Additional Requirements
+                    <span className="text-gray-400">Deadline</span>
+                    <span className="text-white">
+                      {new Date(watch("deadline_ts") * 1000).toLocaleDateString()}
                     </span>
-                    <span className="text-white">{requirements.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Refund After</span>
+                    <span className="text-white">
+                      {new Date(watch("refund_after_ts") * 1000).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
 
@@ -457,7 +430,6 @@ export function CreateTask() {
             </div>
           </div>
         </form>
-        <div onClick={handleTest}>测试合约</div>
       </motion.div>
     </div>
   );

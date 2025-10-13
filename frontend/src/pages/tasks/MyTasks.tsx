@@ -26,8 +26,8 @@ interface Task {
   kolParticipants?: number; // Number of KOL participants
   status: 'draft' | 'active' | 'paused' | 'completed' | 'cancelled' | 'applied' | 'in_progress' | 'pending_payment';
   createdAt: string;
-  deadline: string;
-  requirements: string[];
+  deadline_ts: number;
+  refund_after_ts: number;
   advertiser?: string;
   progress?: number;
   canClaim?: boolean;
@@ -52,8 +52,8 @@ export function MyTasks() {
         kolParticipants: 5,
         status: 'active',
         createdAt: '2024-01-10',
-        deadline: '2024-02-10',
-        requirements: ['10K+ subscribers', 'Tech niche', 'English content'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 30,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 60,
         progress: 60
       },
       {
@@ -66,8 +66,8 @@ export function MyTasks() {
         kolParticipants: 8,
         status: 'completed',
         createdAt: '2024-01-05',
-        deadline: '2024-01-25',
-        requirements: ['Gaming content', '50K+ subscribers', 'Active community'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 15,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 45,
         progress: 100
       },
       {
@@ -80,8 +80,8 @@ export function MyTasks() {
         kolParticipants: 0,
         status: 'draft',
         createdAt: '2024-01-12',
-        deadline: '2024-02-15',
-        requirements: ['Fitness niche', '5K+ subscribers', 'Regular uploads'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 35,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 65,
         progress: 0
       }
     ] : [
@@ -93,8 +93,8 @@ export function MyTasks() {
         budget: 800,
         status: 'completed',
         createdAt: '2024-01-10',
-        deadline: '2024-01-25',
-        requirements: ['10K+ subscribers', 'Tech niche', 'English content'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 15,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 45,
         advertiser: 'TechCorp Inc.',
         progress: 100,
         canClaim: true
@@ -107,8 +107,8 @@ export function MyTasks() {
         budget: 1200,
         status: 'in_progress',
         createdAt: '2024-01-15',
-        deadline: '2024-02-15',
-        requirements: ['Gaming content', '25K+ subscribers', 'RPG experience'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 30,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 60,
         advertiser: 'GameStudio Pro',
         progress: 75
       },
@@ -120,8 +120,8 @@ export function MyTasks() {
         budget: 600,
         status: 'applied',
         createdAt: '2024-01-18',
-        deadline: '2024-02-20',
-        requirements: ['Fitness niche', '5K+ subscribers', 'Health content'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 32,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 62,
         advertiser: 'FitLife Apps',
         progress: 0
       },
@@ -133,8 +133,8 @@ export function MyTasks() {
         budget: 450,
         status: 'pending_payment',
         createdAt: '2024-01-08',
-        deadline: '2024-01-30',
-        requirements: ['Cooking content', '8K+ subscribers', 'Recipe videos'],
+        deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 22,
+        refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 52,
         advertiser: 'KitchenMaster',
         progress: 100,
         canClaim: true
@@ -375,20 +375,16 @@ export function MyTasks() {
                         <div className="flex items-center space-x-2">
                           <Clock className="h-4 w-4 text-yellow-400" />
                           <span className="text-sm text-gray-300">
-                            Deadline: {new Date(task.deadline).toLocaleDateString()}
+                            Deadline: {new Date(task.deadline_ts * 1000).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {task.requirements.map((req, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-primary-500/20 text-primary-300 text-xs rounded-full"
-                          >
-                            {req}
-                          </span>
-                        ))}
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Clock className="h-4 w-4 text-orange-400" />
+                        <span className="text-sm text-gray-300">
+                          Refund: {new Date(task.refund_after_ts * 1000).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
 
