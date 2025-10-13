@@ -41,5 +41,5 @@ export class UserContract {
           }));
         return result;
     }
-    // TODO: 退款相关函数待服务端开发
+    // TODO: Refund-related functions pending backend development
 }

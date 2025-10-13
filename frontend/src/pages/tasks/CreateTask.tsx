@@ -457,7 +457,7 @@ export function CreateTask() {
             </div>
           </div>
         </form>
-        <div onClick={handleTest}>测试合约</div>
+        <div onClick={handleTest}>Test Contract</div>
       </motion.div>
     </div>
   );

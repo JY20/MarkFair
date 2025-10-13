@@ -1,12 +1,12 @@
 /**
  * =============================================================================
- * ATLAS 完整测试池设置脚本 (PTB版本)
+ * ATLAS Complete Test Pool Setup Script (PTB version)
  * =============================================================================
  *
- * 功能: 一次性完成Atlas测试池的完整设置
- * 包含: 授权 → 充值 → Finalize → 生成Proof数据
+ * Function: Complete the entire Atlas test pool setup in one go
+ * Includes: Authorization → Funding → Finalize → Generate Proof data
  *
- * 优势: 使用单个交易批次，避免授权问题
+ * Advantage: Uses a single transaction batch, avoiding authorization issues
  * =============================================================================
  */
 
@@ -21,18 +21,18 @@ import {
 } from "starknet";
 import { SimpleMerkleTree } from "@ericnordelo/strk-merkle-tree";
 
-// ===== 配置信息 =====
+// ===== Configuration Information =====
 const CONFIG = {
-  // 网络配置
+  // Network configuration
   rpcUrl: "https://starknet-sepolia.public.blastapi.io/rpc/v0_8",
 
-  // 合约地址
+  // Contract addresses
   kolEscrowAddress:
     "0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a",
   mkfrTokenAddress:
     "0x075d470cb627938cb8f835fd01cab06b7fab0fbe4b2eeb2f6e6175edad0f98ec",
 
-  // Atlas前端4人测试数据
+  // Atlas frontend 4-person test data
   users: [
     {
       name: "main/atlas",
@@ -60,17 +60,17 @@ const CONFIG = {
     },
   ],
 
-  // Attester密钥
+  // Attester key
   attesterSK:
     "0x04d8fa5f31cd5642f6c5be28d9f7414b4055d85e8050d3e996f34f6a8b950a0f",
 
-  // 池子配置
+  // Pool configuration
   poolId: 0x2002,
   epoch: 1,
   totalAmount: "10000000000000000000000", // 10000 MKFR
 };
 
-// ===== 工具函数 =====
+// ===== Utility Functions =====
 
 function normalizeHex(h) {
   if (typeof h === "bigint") h = "0x" + h.toString(16);
@@ -85,7 +85,7 @@ function normalizeHexForLib(h) {
   return normalized.length % 2 === 0 ? normalized : "0x0" + normalized.slice(2);
 }
 
-// Merkle树相关函数
+// Merkle tree related functions
 function customLeafHash(user, shares) {
   const userHex = normalizeHexForLib(user);
   const sharesHex = normalizeHexForLib(shares);
@@ -122,21 +122,21 @@ function signFinalize(poolId, epoch, merkleRoot, privateKey) {
   return [signature.r.toString(), signature.s.toString()];
 }
 
-// ===== 主要功能 =====
+// ===== Main Functions =====
 
 async function generateCompleteSetup() {
-  console.log("🏊‍♂️ Atlas前端完整测试池设置");
+  console.log("🏊‍♂️ Atlas Frontend Complete Test Pool Setup");
   console.log("=".repeat(50));
 
-  // 生成Merkle树
-  console.log("\n🌳 生成Merkle树...");
+  // Generate Merkle tree
+  console.log("\n🌳 Generating Merkle tree...");
   const merkleTree = buildMerkleTree(CONFIG.users);
   const merkleRoot = merkleTree.root;
 
   console.log(`Merkle Root: ${merkleRoot}`);
 
-  // 生成签名
-  console.log("\n✍️  生成finalize签名...");
+  // Generate signature
+  console.log("\n✍️  Generating finalize signature...");
   const [r, s] = signFinalize(
     CONFIG.poolId,
     CONFIG.epoch,
@@ -144,11 +144,11 @@ async function generateCompleteSetup() {
     CONFIG.attesterSK
   );
 
-  console.log(`签名 R: ${r}`);
-  console.log(`签名 S: ${s}`);
+  console.log(`Signature R: ${r}`);
+  console.log(`Signature S: ${s}`);
 
-  // 生成用户proof数据
-  console.log("\n🔐 生成用户Proof数据...");
+  // Generate user proof data
+  console.log("\n🔐 Generating user proof data...");
   const proofs = {};
   CONFIG.users.forEach(({ name, account, shares }, index) => {
     const leaf = customLeafHash(account, shares);
@@ -161,9 +161,9 @@ async function generateCompleteSetup() {
     };
 
     console.log(`  ${name}:`);
-    console.log(`    地址: ${account}`);
+    console.log(`    Address: ${account}`);
     console.log(
-      `    份额: ${shares} (${(
+      `    Shares: ${shares} (${(
         BigInt(shares) / BigInt("1000000000000000000")
       ).toString()} MKFR)`
     );
@@ -172,11 +172,11 @@ async function generateCompleteSetup() {
     );
   });
 
-  // 输出完整的命令序列
-  console.log("\n🔧 完整设置命令序列:");
+  // Output complete command sequence
+  console.log("\n🔧 Complete Setup Command Sequence:");
   console.log("=".repeat(50));
 
-  console.log("\n1️⃣ 授权代币:");
+  console.log("\n1️⃣ Authorize Token:");
   console.log(`sncast invoke --network sepolia \\`);
   console.log(`  --contract-address ${CONFIG.mkfrTokenAddress} \\`);
   console.log(`  --function approve \\`);
@@ -184,7 +184,7 @@ async function generateCompleteSetup() {
     `  --calldata ${CONFIG.kolEscrowAddress} 0x21e19e0c9bab2400000 0x0`
   );
 
-  console.log("\n2️⃣ 充值池子:");
+  console.log("\n2️⃣ Fund Pool:");
   console.log(`sncast invoke --network sepolia \\`);
   console.log(`  --contract-address ${CONFIG.kolEscrowAddress} \\`);
   console.log(`  --function fund_pool_with_transfer \\`);
@@ -204,17 +204,17 @@ async function generateCompleteSetup() {
     } ${merkleRoot} ${r} ${s}`
   );
 
-  // 输出测试命令
-  console.log("\n🧪 测试命令:");
+  // Output test commands
+  console.log("\n🧪 Test Commands:");
   console.log("=".repeat(50));
 
-  console.log("\n📊 查询池子状态:");
+  console.log("\n📊 Query Pool Status:");
   console.log(`sncast call --network sepolia \\`);
   console.log(`  --contract-address ${CONFIG.kolEscrowAddress} \\`);
   console.log(`  --function get_pool_info \\`);
   console.log(`  --calldata 0x${CONFIG.poolId.toString(16)} 0x0`);
 
-  console.log("\n💰 预览奖励金额 (以jimmy为例):");
+  console.log("\n💰 Preview Reward Amount (using jimmy as example):");
   console.log(`sncast call --network sepolia \\`);
   console.log(`  --contract-address ${CONFIG.kolEscrowAddress} \\`);
   console.log(`  --function preview_amount \\`);
@@ -224,7 +224,7 @@ async function generateCompleteSetup() {
     } 0x21e19e0c9bab2400000 0x0`
   );
 
-  console.log("\n🎁 领取奖励 (以jimmy为例):");
+  console.log("\n🎁 Claim Reward (using jimmy as example):");
   const jimmyProof = proofs.jimmy;
   console.log(`sncast invoke --network sepolia \\`);
   console.log(`  --contract-address ${CONFIG.kolEscrowAddress} \\`);
@@ -237,8 +237,8 @@ async function generateCompleteSetup() {
     )}`
   );
 
-  // 输出前端JSON数据
-  console.log("\n📱 前端测试数据:");
+  // Output frontend JSON data
+  console.log("\n📱 Frontend Test Data:");
   console.log("=".repeat(50));
   console.log("```json");
   console.log(
@@ -262,7 +262,7 @@ async function generateCompleteSetup() {
             epoch: CONFIG.epoch,
             merkleRoot: merkleRoot,
             users: proofs,
-            description: "可领取测试池 - 4个用户都可以测试领取功能",
+            description: "Claimable test pool - All 4 users can test claim functionality",
           },
         },
         contracts: {
@@ -270,10 +270,10 @@ async function generateCompleteSetup() {
           mkfrToken: CONFIG.mkfrTokenAddress,
         },
         testScenarios: [
-          "充值测试: Pool 0x2001 - approve + fund_pool_with_transfer",
-          "领取测试: Pool 0x2002 - claim_epoch (4个用户)",
-          "预览测试: preview_amount函数测试",
-          "状态查询: get_pool_info等查询函数",
+          "Funding Test: Pool 0x2001 - approve + fund_pool_with_transfer",
+          "Claim Test: Pool 0x2002 - claim_epoch (4 users)",
+          "Preview Test: preview_amount function testing",
+          "Status Query: get_pool_info and other query functions",
         ],
       },
       null,
@@ -282,12 +282,12 @@ async function generateCompleteSetup() {
   );
   console.log("```");
 
-  console.log("\n✨ 设置完成！Atlas前端可以开始测试了！");
-  console.log("\n🎯 测试步骤:");
-  console.log("1. 运行上面的3个命令完成池子设置");
-  console.log("2. 使用JSON数据配置前端");
-  console.log("3. 测试充值功能 (Pool 0x2001)");
-  console.log("4. 测试领取功能 (Pool 0x2002, 4个用户)");
+  console.log("\n✨ Setup complete! Atlas frontend can start testing now!");
+  console.log("\n🎯 Test Steps:");
+  console.log("1. Run the 3 commands above to complete pool setup");
+  console.log("2. Configure frontend using the JSON data");
+  console.log("3. Test funding functionality (Pool 0x2001)");
+  console.log("4. Test claim functionality (Pool 0x2002, 4 users)");
 
   return {
     merkleRoot,
