@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (): Promise<boolean> => {
     try {
-      const token = await getToken();
+      const token = await getToken({template: 'backend'});
       console.log('token',token)
       setAuthToken(token);
       const profile = await Api.getUserProfile();
