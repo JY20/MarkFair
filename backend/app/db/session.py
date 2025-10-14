@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from ..core.config import settings
@@ -37,7 +37,7 @@ def get_db_session():
     db = SessionLocal()
     try:
         # Test the connection to ensure it's working
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         print("✅ Database connection established successfully")
         yield db
     except Exception as e:

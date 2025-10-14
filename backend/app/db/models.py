@@ -42,3 +42,27 @@ class Video(Base):
     user = relationship("User", back_populates="videos")
 
 
+class Pool(Base):
+    __tablename__ = "pools"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    # single numeric pool id used on-chain (we use the DB id by default)
+    pool_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, unique=True, index=True)
+    brand: Mapped[str] = mapped_column(String, nullable=False)
+    token: Mapped[str] = mapped_column(String, nullable=False)
+    # New metadata fields for the task
+    task_title: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    attester_pubkey: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    deadline_ts: Mapped[int] = mapped_column(Integer, nullable=False)
+    refund_after_ts: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="submitted", index=True)
+    tx_hash: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    error_message: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[Optional[DateTime]] = mapped_column(DateTime, nullable=True)
+
+    # Optional relationship to user
+    # Not adding back_populates to avoid importing order issues in this file
+
+
