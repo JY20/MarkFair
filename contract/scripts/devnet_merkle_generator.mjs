@@ -171,7 +171,7 @@ async function main() {
   const shares2 = 2_500n;
   const pool_id = { low: POOL_LOW, high: POOL_HIGH };
 
-  // 用户数据
+  // User data
   const users = [
     { account: BRAND, shares: shares1 },
     { account: BRAND2, shares: shares2 },
@@ -200,7 +200,7 @@ async function main() {
 
   const totalShares = shares1 + shares2; // 10000
   const deadlineTs = BigInt(Math.floor(Date.now() / 1000) + 3600);
-  const nonce = 1n; // 当前nonce是1
+  const nonce = 1n; // Current nonce is 1
 
   const expected = pedersenMany([
     shortStrHex("KOL_FINALIZE"),

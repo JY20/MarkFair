@@ -415,7 +415,7 @@ mod KolEscrow {
     fn preview_amount(self: @ContractState, pool_id: u256, epoch: u64, shares: u256) -> u256 {
             assert(shares.high == 0, ERR_BAD_SHARES);
             
-            // 直接使用epoch级别的unit_k，与实际清算逻辑一致
+            // Directly use epoch-level unit_k, consistent with actual settlement logic
             let em: super::EpochMeta = self.epoch_meta.read((pool_id, epoch));
             assert(em.unit_k.high == 0, ERR_BAD_UNIT);
             mul_128x128_to_256_exact_low64(shares.low, em.unit_k.low)
