@@ -8,6 +8,25 @@
 
 Web3 startups struggle to get noticed, while KOLs and creators spend hours chasing opportunities. Traditional campaigns lack transparency and security — both advertisers and creators risk being "rugged." We wanted a **fair, efficient way** to connect the two worlds with on-chain escrow and verifiable attribution.
 
+## Our Team
+
+<p align="center">
+  <img src="assets/background/McMaster_University_logo.svg.png" alt="McMaster University" height="60"/>
+  <img src="assets/background/NYU-Logo.png" alt="New York University" height="60"/>
+  <img src="assets/background/University-of-Utah-Logo.png" alt="University of Utah" height="60"/>
+  <img src="assets/background/rbc-capital-markets.png" alt="RBC Capital Markets" height="60"/>
+  <img src="assets/background/Alibaba-Logo.png" alt="Alibaba" height="60"/>
+</p>
+
+Our team brings together diverse expertise from top academic institutions and industry leaders:
+
+- **Atlas** - Frontend Developer | Alibaba
+- **Jimmy** - Full Stack Developer | McMaster University & RBC Capital Markets
+- **Leo** - Backend Developer | University of Utah
+- **Mark** - Smart Contract Developer | New York University
+
+With backgrounds spanning blockchain development, finance, and enterprise software, our team combines technical expertise with business acumen to build a platform that addresses real market needs.
+
 ## What it does
 
 - **Advertisers**: Create campaigns and deposit funds into a Starknet escrow contract.  
@@ -81,6 +100,10 @@ The bigger picture is simple. Web3 projects, especially early-stage startups, de
   - `strk-merkle-tree/` - Starknet Merkle tree implementation library
   - `instructions/` - Complete documentation and deployment guides
   - `target/` - Compiled contract artifacts
+
+- `assets/` - Project assets and resources
+  - `background/` - Background images and logos
+  - `UI/` - User interface design images and mockups
 
 ## Smart Contract Status
 
@@ -207,6 +230,7 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 
 ## Connect With Us
 
