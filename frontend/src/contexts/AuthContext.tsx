@@ -18,7 +18,7 @@ type AuthAction =
   | { type: 'DISCONNECT_WALLET' }
   | { type: 'UPDATE_USER'; payload: Partial<User> }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_USER_ROLE'; payload: 'advertiser' | 'kol' };
+  | { type: 'SET_USER_ROLE'; payload: 'advertiser' | 'kol' }
 
 const initialState: AuthState = {
   user: null,

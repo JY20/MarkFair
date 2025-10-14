@@ -42,6 +42,7 @@ export function TaskHall() {
   const [currentTaskId, setCurrentTaskId] = useState<string>('');
   const [videoUrl, setVideoUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   // Mock data for available tasks
   const [tasks] = useState<Task[]>([
@@ -147,15 +148,15 @@ export function TaskHall() {
 
     setIsSubmitting(true);
     try {
-      await Api.post('/api/youtube/videos', { 
-        video_url: videoUrl,
-        task_id: currentTaskId 
-      });
-      toast.success('申请成功！');
+      // await Api.post('/api/youtube/videos', { 
+      //   video_url: videoUrl,
+      //   task_id: currentTaskId 
+      // });
+      // toast.success('申请成功！');
       setAppliedTasks(prev => new Set([...prev, currentTaskId]));
       setShowApplyModal(false);
       setVideoUrl('');
-      navigate('/my-tasks');
+      navigate('/tasks/my-tasks');
     } catch (error) {
       console.error('申请失败:', error);
       toast.error('申请失败，请重试');
@@ -232,7 +233,7 @@ export function TaskHall() {
                 <Youtube className="h-6 w-6 text-red-500" />
               </div>
 
-              <p className="text-gray-300 mb-4 text-sm leading-relaxed">{task.description}</p>
+              {/* <p className="text-gray-300 mb-4 text-sm leading-relaxed">{task.description}</p> */}
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="flex items-center space-x-2">
@@ -298,9 +299,12 @@ export function TaskHall() {
 
               {/* Action Buttons */}
               <div className="flex space-x-3">
-                <button className="flex-1 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2">
+                <button 
+                  onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                  className="flex-1 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2"
+                >
                   <Eye className="h-4 w-4" />
-                  <span>View Details</span>
+                  <span>{expandedTaskId === task.id ? 'Hide Details' : 'View Details'}</span>
                 </button>
                 {task.status === 'open' && (
                   appliedTasks.has(task.id) ? (
@@ -320,6 +324,57 @@ export function TaskHall() {
                   )
                 )}
               </div>
+              
+              {/* Expanded Details */}
+              {expandedTaskId === task.id && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-4 pt-4 border-t border-gray-700"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-300 mb-1">Detailed Description</h4>
+                      <p className="text-gray-400 text-sm">{task.description}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Advertiser</h4>
+                        <p className="text-gray-400 text-sm">{task.advertiser}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Platform</h4>
+                        <p className="text-gray-400 text-sm capitalize">{task.platform}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Deadline</h4>
+                        <p className="text-gray-400 text-sm">{new Date(task.deadline_ts * 1000).toLocaleDateString()} ({new Date(task.deadline_ts * 1000).toLocaleTimeString()})</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Refund After</h4>
+                        <p className="text-gray-400 text-sm">{new Date(task.refund_after_ts * 1000).toLocaleDateString()} ({new Date(task.refund_after_ts * 1000).toLocaleTimeString()})</p>
+                      </div>
+                    </div>
+                    
+                    {task.minSubscribers || task.minLikes ? (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Requirements</h4>
+                        <ul className="list-disc list-inside text-gray-400 text-sm">
+                          {task.minSubscribers && (
+                            <li>Minimum {task.minSubscribers.toLocaleString()} subscribers</li>
+                          )}
+                          {task.minLikes && (
+                            <li>Minimum {task.minLikes.toLocaleString()} likes per video</li>
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           ))}
         </div>

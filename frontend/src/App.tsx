@@ -13,6 +13,7 @@ import { TaskHall } from './pages/tasks/TaskHall';
 import { YouTubeConnect } from './pages/YouTubeConnect';
 import { RoleSelectionModal } from './components/RoleSelectionModal';
 import { SEO, pageSEO } from './components/SEO';
+import { Settings } from './pages/Settings';
 
 function AppContent() {
   const { isSignedIn, isLoaded } = useUser();
@@ -136,10 +137,7 @@ function AppContent() {
                     keywords="account settings, user preferences, profile settings, account management"
                   />
                   <DashboardLayout>
-                    <div className="p-8">
-                      <h1 className="text-3xl font-bold text-white">Settings</h1>
-                      <p className="text-gray-400 mt-2">Coming soon...</p>
-                    </div>
+                    <Settings />
                   </DashboardLayout>
                 </>
               } />

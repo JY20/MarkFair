@@ -28,7 +28,7 @@ export class TokenContract {
     const abi = await this.getABI();
     console.log(abi);
     const contract = new Contract(abi, contractAddress, hash_provider);
-    const weiAmount = amount * 1000000;
+    const weiAmount = amount * 1e8;
 
     const tx = await contract.populate("approve", [
       kolEscrowAddress,

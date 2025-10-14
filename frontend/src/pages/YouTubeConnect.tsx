@@ -85,7 +85,7 @@ export function YouTubeConnect() {
       
     } catch (error) {
       console.error('Failed to connect YouTube:', error);
-      alert('Failed to connect YouTube account. Please try again.');
+      toast.error('Failed to connect YouTube account. Please try again.');
     } finally {
       setIsConnecting(false);
     }
@@ -137,13 +137,13 @@ export function YouTubeConnect() {
                 This is required to verify your identity and secure your content creator status.
               </p>
 
-              <a 
-                href="/dashboard" 
+              <button 
+                onClick={() => toast.error('Please connect your wallet from the header menu')}
                 className="px-8 py-4 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition-all flex items-center space-x-3 mx-auto w-fit"
               >
                 <Wallet className="h-5 w-5" />
                 <span>Connect Wallet</span>
-              </a>
+              </button>
             </div>
           </div>
         ) : !isConnected ? (

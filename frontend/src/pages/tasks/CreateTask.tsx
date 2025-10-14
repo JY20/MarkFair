@@ -20,7 +20,6 @@ import {
   KOL_ADDRESS,
 } from "../../constants";
 import { TokenContract } from "../../helpers/TokenContract";
-import { UserContract } from "../../helpers/UserContract";
 import { Api } from "../../api";
 
 const createTaskSchema = z.object({
@@ -41,7 +40,6 @@ export function CreateTask() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address, account, isConnected, isDisconnected } = useAccount();
   const contract = new TokenContract();
-  const userContract = new UserContract();
 
   const {
     register,
@@ -82,14 +80,13 @@ export function CreateTask() {
        * })
        * 
        *  */ 
-    const response = await fetch('http://localhost:5173/api/pools');
-    const getPool = await response.json();
-    console.log('getPool', getPool)
+    // const response = await fetch('http://localhost:5173/api/pools');
+    // const getPool = await response.json();
+    // console.log('getPool', getPool)
     const result = await contract.Approve(KOL_ADDRESS, data?.budget, account);
     console.log(result)
     if (result?.transaction_hash) {
-      alert("Task created successfully!");
-      // window.location.href = "/tasks/my-tasks";
+      window.location.href = "/tasks/my-tasks";
     }
     } catch (error) {
       console.error("Failed to create task:", error);

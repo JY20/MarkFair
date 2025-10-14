@@ -15,6 +15,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStarknet } from '../../hooks/useStarknet';
+import { UserContract } from "../../helpers/UserContract";
+import { useAccount, } from "@starknet-react/core";
+import { connect, disconnect } from "get-starknet";
+import { WalletAccount } from 'starknet';
 
 interface Task {
   id: string;
@@ -35,9 +39,10 @@ interface Task {
 
 export function MyTasks() {
   const { user } = useAuth();
-  const { isConnected, connectWallet } = useStarknet();
   const isAdvertiser = user?.role === 'advertiser';
   const [claimingTask, setClaimingTask] = useState<string | null>(null);
+  const userContract = new UserContract();
+  const { address, account, isConnected, isDisconnected } = useAccount();
 
   // Mock data - different for advertisers vs KOLs
   const [tasks] = useState<Task[]>(
@@ -185,21 +190,28 @@ export function MyTasks() {
   };
 
   const handleClaimPayment = async (taskId: string, amount: number) => {
-    if (!isConnected) {
+    if (isDisconnected) {
       alert('Please connect your wallet first to claim payment');
-      try {
-        await connectWallet();
-      } catch (error) {
-        return;
-      }
+      return;
     }
 
     setClaimingTask(taskId);
-    
+    const selectedWalletSWO = await connect({neverAsk: true});
+    const myWalletAccount = await WalletAccount.connect(
+      { nodeUrl: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8' },
+      selectedWalletSWO
+    );
+
     try {
+      console.log('Claiming payment for task:', taskId, amount);
+      const status = await userContract.getEpochMeta('0x0800', '6');
+      console.log(myWalletAccount)
+      const result = await userContract.claim('0x0800', '1', '0', myWalletAccount, '800',Number(amount), ["0x066322e2fffae07527033c90db6b00cf3a12d5d9a608c7d25f99d7ca95daa82b","0x695b1f56bba2f00ffa40ed646c1f5da99a2f24dfc289c0b588d0588378e814"]);
+      console.log('Pool status:', status);
+        // console.log('Pool status:', result);
       // Mock wallet transaction
       // await new Promise(resolve => setTimeout(resolve, 2000));
-      alert(`Successfully claimed $${amount} for task completion!`);
+      // alert(`Successfully claimed $${amount} for task completion!`);
       
       // Update task status (in real app, this would come from backend)
       // For demo purposes, we'll just show success
@@ -309,7 +321,7 @@ export function MyTasks() {
         </div>
 
         {/* Tasks List */}
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700">
+        <div className="bg-gray-c   /50 rounded-xl border border-gray-700">
           <div className="p-6 border-b border-gray-700">
             <h2 className="text-xl font-semibold text-white">Tasks Overview</h2>
           </div>
