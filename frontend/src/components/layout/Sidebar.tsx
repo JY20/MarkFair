@@ -23,8 +23,8 @@ export function Sidebar() {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Plus, label: 'Create Task', path: '/tasks/create' },
     { icon: List, label: 'My Tasks', path: '/tasks/my-tasks' },
-    { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-    { icon: Wallet, label: 'Wallet', path: '/wallet' },
+    // { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+    // { icon: Wallet, label: 'Wallet', path: '/wallet' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
@@ -33,7 +33,7 @@ export function Sidebar() {
     { icon: Eye, label: 'Task Hall', path: '/tasks' },
     { icon: List, label: 'My Tasks', path: '/tasks/my-tasks' },
     { icon: Youtube, label: 'YouTube Account', path: '/youtube-connect' },
-    { icon: DollarSign, label: 'Earnings', path: '/earnings' },
+    // { icon: DollarSign, label: 'Earnings', path: '/earnings' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 

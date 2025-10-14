@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Eye, 
-  DollarSign, 
-  Users, 
-  CheckCircle,
-  Youtube,
-  Filter,
+import { useNavigate } from 'react-router-dom';
+import {
   Search,
+  Filter,
+  DollarSign,
   Calendar,
-  Target
+  Users,
+  CheckCircle,
+  Eye,
+  Youtube,
+  X,
 } from 'lucide-react';
+import { Api } from '../../api';
+import { toast } from 'react-hot-toast';
 
 interface Task {
   id: string;
@@ -18,8 +21,8 @@ interface Task {
   description: string;
   platform: 'youtube';
   budget: number;
-  deadline: string;
-  requirements: string[];
+  deadline_ts: number;
+  refund_after_ts: number;
   advertiser: string;
   applicants: number;
   maxApplicants: number;
@@ -31,9 +34,15 @@ interface Task {
 }
 
 export function TaskHall() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [appliedTasks, setAppliedTasks] = useState<Set<string>>(new Set());
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string>('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   // Mock data for available tasks
   const [tasks] = useState<Task[]>([
@@ -43,8 +52,8 @@ export function TaskHall() {
       description: 'Looking for tech reviewers to create an in-depth review video of our latest smartphone. Must include unboxing, features overview, and honest opinion.',
       platform: 'youtube',
       budget: 800,
-      deadline: '2024-02-15',
-      requirements: ['Tech niche', 'English content', 'Previous phone reviews'],
+      deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 7,
+      refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 14,
       advertiser: 'TechCorp Inc.',
       applicants: 12,
       maxApplicants: 20,
@@ -59,8 +68,8 @@ export function TaskHall() {
       description: 'Sponsor gaming content creators for our new RPG game launch. Create gameplay videos and honest reviews.',
       platform: 'youtube',
       budget: 1200,
-      deadline: '2024-02-20',
-      requirements: ['Gaming content', 'RPG experience', 'Active community'],
+      deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 10,
+      refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 17,
       advertiser: 'GameStudio Pro',
       applicants: 8,
       maxApplicants: 15,
@@ -75,8 +84,8 @@ export function TaskHall() {
       description: 'Promote our fitness app to health-conscious audience. Show app features and workout routines.',
       platform: 'youtube',
       budget: 600,
-      deadline: '2024-02-10',
-      requirements: ['Fitness niche', 'Regular uploads', 'Health content'],
+      deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 5,
+      refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 12,
       advertiser: 'FitLife Apps',
       applicants: 15,
       maxApplicants: 25,
@@ -91,8 +100,8 @@ export function TaskHall() {
       description: 'Create cooking tutorials using our new kitchen gadgets. Show practical usage and recipes.',
       platform: 'youtube',
       budget: 450,
-      deadline: '2024-01-30',
-      requirements: ['Cooking content', 'Recipe videos', 'Kitchen reviews'],
+      deadline_ts: Math.floor(Date.now() / 1000) - 86400,
+      refund_after_ts: Math.floor(Date.now() / 1000) + 86400 * 6,
       advertiser: 'KitchenMaster',
       applicants: 20,
       maxApplicants: 20,
@@ -127,9 +136,33 @@ export function TaskHall() {
   };
 
   const handleApplyTask = (taskId: string) => {
-    // Mock application logic
-    setAppliedTasks(prev => new Set([...prev, taskId]));
-    alert(`Successfully applied to task! The advertiser will review your application.`);
+    setCurrentTaskId(taskId);
+    setShowApplyModal(true);
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!videoUrl.trim()) {
+      toast.error('请输入YouTube视频地址');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // await Api.post('/api/youtube/videos', { 
+      //   video_url: videoUrl,
+      //   task_id: currentTaskId 
+      // });
+      // toast.success('申请成功！');
+      setAppliedTasks(prev => new Set([...prev, currentTaskId]));
+      setShowApplyModal(false);
+      setVideoUrl('');
+      navigate('/tasks/my-tasks');
+    } catch (error) {
+      console.error('申请失败:', error);
+      toast.error('申请失败，请重试');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -200,7 +233,7 @@ export function TaskHall() {
                 <Youtube className="h-6 w-6 text-red-500" />
               </div>
 
-              <p className="text-gray-300 mb-4 text-sm leading-relaxed">{task.description}</p>
+              {/* <p className="text-gray-300 mb-4 text-sm leading-relaxed">{task.description}</p> */}
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="flex items-center space-x-2">
@@ -212,7 +245,7 @@ export function TaskHall() {
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-blue-400" />
                   <span className="text-sm text-gray-300">
-                    {new Date(task.deadline).toLocaleDateString()}
+                    Deadline: {new Date(task.deadline_ts * 1000).toLocaleDateString()}
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -222,9 +255,9 @@ export function TaskHall() {
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Target className="h-4 w-4 text-yellow-400" />
+                  <Calendar className="h-4 w-4 text-yellow-400" />
                   <span className="text-sm text-gray-300">
-                    {task.requirements.length} requirements
+                    Refund: {new Date(task.refund_after_ts * 1000).toLocaleDateString()}
                   </span>
                 </div>
               </div>
@@ -262,29 +295,16 @@ export function TaskHall() {
                 ))}
               </div>
 
-              {/* Requirements */}
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-300 mb-2">Requirements:</h4>
-                <div className="space-y-1">
-                  {task.requirements.slice(0, 3).map((req, idx) => (
-                    <div key={idx} className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-400" />
-                      <span className="text-xs text-gray-400">{req}</span>
-                    </div>
-                  ))}
-                  {task.requirements.length > 3 && (
-                    <span className="text-xs text-gray-500">
-                      +{task.requirements.length - 3} more requirements
-                    </span>
-                  )}
-                </div>
-              </div>
+
 
               {/* Action Buttons */}
               <div className="flex space-x-3">
-                <button className="flex-1 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2">
+                <button 
+                  onClick={() => setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                  className="flex-1 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2"
+                >
                   <Eye className="h-4 w-4" />
-                  <span>View Details</span>
+                  <span>{expandedTaskId === task.id ? 'Hide Details' : 'View Details'}</span>
                 </button>
                 {task.status === 'open' && (
                   appliedTasks.has(task.id) ? (
@@ -304,6 +324,57 @@ export function TaskHall() {
                   )
                 )}
               </div>
+              
+              {/* Expanded Details */}
+              {expandedTaskId === task.id && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-4 pt-4 border-t border-gray-700"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-300 mb-1">Detailed Description</h4>
+                      <p className="text-gray-400 text-sm">{task.description}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Advertiser</h4>
+                        <p className="text-gray-400 text-sm">{task.advertiser}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Platform</h4>
+                        <p className="text-gray-400 text-sm capitalize">{task.platform}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Deadline</h4>
+                        <p className="text-gray-400 text-sm">{new Date(task.deadline_ts * 1000).toLocaleDateString()} ({new Date(task.deadline_ts * 1000).toLocaleTimeString()})</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Refund After</h4>
+                        <p className="text-gray-400 text-sm">{new Date(task.refund_after_ts * 1000).toLocaleDateString()} ({new Date(task.refund_after_ts * 1000).toLocaleTimeString()})</p>
+                      </div>
+                    </div>
+                    
+                    {task.minSubscribers || task.minLikes ? (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300 mb-1">Requirements</h4>
+                        <ul className="list-disc list-inside text-gray-400 text-sm">
+                          {task.minSubscribers && (
+                            <li>Minimum {task.minSubscribers.toLocaleString()} subscribers</li>
+                          )}
+                          {task.minLikes && (
+                            <li>Minimum {task.minLikes.toLocaleString()} likes per video</li>
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           ))}
         </div>
@@ -315,6 +386,66 @@ export function TaskHall() {
               <p>No tasks found matching your criteria.</p>
               <p className="text-sm">Try adjusting your search or filters.</p>
             </div>
+          </div>
+        )}
+        
+        {/* Apply Modal */}
+        {showApplyModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-md w-full"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-white">Apply for Task</h3>
+                <button 
+                  onClick={() => setShowApplyModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  YouTube Video URL
+                </label>
+                <input
+                  type="text"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-white placeholder-gray-400"
+                />
+                <p className="mt-2 text-xs text-gray-400">
+                  Please provide a link to your YouTube video that best represents your content for this task.
+                </p>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowApplyModal(false)}
+                  className="flex-1 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitApplication}
+                  disabled={isSubmitting}
+                  className="flex-1 py-2 px-4 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-all disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Application'
+                  )}
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </motion.div>

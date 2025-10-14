@@ -13,28 +13,27 @@ import { TaskHall } from './pages/tasks/TaskHall';
 import { YouTubeConnect } from './pages/YouTubeConnect';
 import { RoleSelectionModal } from './components/RoleSelectionModal';
 import { SEO, pageSEO } from './components/SEO';
+import { Settings } from './pages/Settings';
 
 function AppContent() {
   const { isSignedIn, isLoaded } = useUser();
-  const { user, setUserRole, fetchUserProfile } = useAuth();
+  const { user, fetchUserProfile, isProfileLoaded, setUserRole } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
-    console.log('user', user);
+    // Only check for role when user is signed in and auth is loaded
     if (isSignedIn && isLoaded && user) {
-      // Check if user has a role set
-      fetchUserProfile().then((hasRole) => {
-        if (!hasRole) {
+      // Check if user profile is loaded and if user has a role set
+      if (isProfileLoaded) {
+        if (!user.role) {
           // No role set, show modal
           setShowRoleModal(true);
         }
-      }).catch(() => {
-        // Error occurred, could show error message
-      });
+      }
     }
-  }, [isSignedIn, isLoaded, user, fetchUserProfile]);
+  }, [isSignedIn, isLoaded, user, isProfileLoaded]);
 
-  if (!isLoaded) {
+  if (!isLoaded || (isSignedIn && !isProfileLoaded)) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading...</div>
@@ -138,10 +137,7 @@ function AppContent() {
                     keywords="account settings, user preferences, profile settings, account management"
                   />
                   <DashboardLayout>
-                    <div className="p-8">
-                      <h1 className="text-3xl font-bold text-white">Settings</h1>
-                      <p className="text-gray-400 mt-2">Coming soon...</p>
-                    </div>
+                    <Settings />
                   </DashboardLayout>
                 </>
               } />
