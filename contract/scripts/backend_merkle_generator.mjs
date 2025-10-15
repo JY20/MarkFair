@@ -95,7 +95,7 @@ function customLeafHash(leafData) {
   state = hash.computePedersenHash(state, account);
   state = hash.computePedersenHash(state, secureHash);
   
-  // 不附加参数个数；与合约 leaf_hash_pedersen 一致：pedersen(0, finalized)
+  // Do not append parameter count; consistent with contract leaf_hash_pedersen: pedersen(0, finalized)
   const finalHash = hash.computePedersenHash("0x0", state);
 
   return normalizeHex(finalHash);
@@ -109,7 +109,7 @@ function customNodeHash(left, right) {
   const a = BigInt(left);
   const b = BigInt(right);
   const [lo, hi] = a <= b ? [left, right] : [right, left];
-  // 与 OZ PedersenCHasher 等价：computeHashOnElements([lo, hi])（内部会附加长度）
+  // Equivalent to OZ PedersenCHasher: computeHashOnElements([lo, hi]) (internally appends length)
   const result = hash.computeHashOnElements([
     normalizeHex(lo),
     normalizeHex(hi),
@@ -149,7 +149,7 @@ function buildMerkleTree(
   });
 
     
-  // 使用SimpleMerkleTree构建树（禁用叶子排序，保持索引与输入一致）
+  // Use SimpleMerkleTree to build the tree (disable leaf sorting, keep indices consistent with input)
   const tree = SimpleMerkleTree.of(leafHashes, {
     nodeHash: customNodeHash,
     sortLeaves: false,
@@ -311,7 +311,7 @@ function generateMerkleData({
  * Example: How backend uses this module
  */
 function exampleUsage() {
-  // Atlas前端4人测试数据 - 总共10000 MKFR
+  // Atlas frontend 4-person test data - total 10000 MKFR
   const users = [
     {
       account:
@@ -330,7 +330,7 @@ function exampleUsage() {
     },
     {
       account:
-        "0x064167f58534A0D29EAb5e6813Cc116E6eC978009920108ee7aA15f0e8Ae7f2D", // 第4个人
+        "0x064167f58534A0D29EAb5e6813Cc116E6eC978009920108ee7aA15f0e8Ae7f2D", // 4th person
       shares: 2500n, // 2500 MKFR (25%)
     },
   ];
@@ -338,8 +338,8 @@ function exampleUsage() {
   const params = {
     users,
     contractAddress:
-      "0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a", // 最新KolEscrow地址
-    pool_id: { low: 0x2002n, high: 0n }, // Atlas可领取测试池
+      "0x02ceed00a4e98084cfbb5e768c3a9ba92c9096f108376ae99f8a09d370c4da2a", // Latest KolEscrow address
+    pool_id: { low: 0x2002n, high: 0n }, // Atlas claimable test pool
     epoch: 1n,
     deadline_ts: BigInt(Math.floor(Date.now() / 1000) + 86400), // 24 hours later
     nonce: 0n, // query current nonce from contract

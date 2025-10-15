@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 import logging
 from functools import lru_cache
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 
@@ -39,7 +39,16 @@ def verify_and_decode_token(token: str) -> Dict[str, Any]:
     return decoded
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthenticatedUser:
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    x_test_user_id: Optional[str] = Header(None)
+) -> AuthenticatedUser:
+    # Test mode: bypass JWT and use X-Test-User-ID header
+    if settings.test_mode and x_test_user_id:
+        logger.warning("⚠️  TEST MODE: Bypassing JWT auth, using X-Test-User-ID=%s", x_test_user_id)
+        return AuthenticatedUser(sub=x_test_user_id, claims={"sub": x_test_user_id, "test_mode": True})
+    
+    # Production mode: validate JWT
     if credentials is None or not credentials.scheme.lower() == "bearer":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
     token = credentials.credentials
