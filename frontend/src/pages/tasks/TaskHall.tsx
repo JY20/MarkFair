@@ -48,8 +48,8 @@ export function TaskHall() {
   const [tasks] = useState<Task[]>([
     {
       id: '1',
-      title: 'Tech Product Review - Latest Smartphone',
-      description: 'Looking for tech reviewers to create an in-depth review video of our latest smartphone. Must include unboxing, features overview, and honest opinion.',
+      title: 'Tech Product Review Campaign',
+      description: 'Looking for tech reviewers to showcase our new smartphone',
       platform: 'youtube',
       budget: 800,
       deadline_ts: Math.floor(Date.now() / 1000) + 86400 * 7,

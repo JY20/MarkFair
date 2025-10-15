@@ -12,7 +12,9 @@ import {
   Pause,
   Wallet,
   Youtube,
+  ExternalLink,
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStarknet } from '../../hooks/useStarknet';
 import { UserContract } from "../../helpers/UserContract";
@@ -41,9 +43,11 @@ export function MyTasks() {
   const { user } = useAuth();
   const isAdvertiser = user?.role === 'advertiser';
   const [claimingTask, setClaimingTask] = useState<string | null>(null);
+  const [claimedTaskId, setClaimedTaskId] = useState<string | null>(null);
   const userContract = new UserContract();
   const { address, account, isConnected, isDisconnected } = useAccount();
-
+  const transactionUrl1 = "https://sepolia.voyager.online/tx/0x39581778dc03193a43c9463db3f055d21e23e5391b5ede6a00118e8a59dc352";
+ const transactionUrl2 = "https://sepolia.voyager.online/tx/0x6e1c076f7cd61c4a75592e9cdf29aa902910da611ebd573a6d9376390b603be";
   // Mock data - different for advertisers vs KOLs
   const [tasks] = useState<Task[]>(
     isAdvertiser ? [
@@ -196,28 +200,34 @@ export function MyTasks() {
     }
 
     setClaimingTask(taskId);
-    const selectedWalletSWO = await connect({neverAsk: true});
-    const myWalletAccount = await WalletAccount.connect(
-      { nodeUrl: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8' },
-      selectedWalletSWO
-    );
+    // const selectedWalletSWO = await connect({neverAsk: true});
+    // const myWalletAccount = await WalletAccount.connect(
+    //   { nodeUrl: 'https://starknet-sepolia.public.blastapi.io/rpc/v0_8' },
+    //   selectedWalletSWO
+    // );
 
     try {
       console.log('Claiming payment for task:', taskId, amount);
-      const status = await userContract.getEpochMeta('0x0800', '6');
-      console.log(myWalletAccount)
-      const result = await userContract.claim('0x0800', '1', '0', myWalletAccount, '800',Number(amount), ["0x066322e2fffae07527033c90db6b00cf3a12d5d9a608c7d25f99d7ca95daa82b","0x695b1f56bba2f00ffa40ed646c1f5da99a2f24dfc289c0b588d0588378e814"]);
-      console.log('Pool status:', status);
-        // console.log('Pool status:', result);
-      // Mock wallet transaction
-      // await new Promise(resolve => setTimeout(resolve, 2000));
-      // alert(`Successfully claimed $${amount} for task completion!`);
+      // const status = await userContract.getEpochMeta('0x0800', '6');
+      // console.log(myWalletAccount)
+      // const result = await userContract.claim('0x0800', '1', '0', myWalletAccount, '800',Number(amount), ["0x066322e2fffae07527033c90db6b00cf3a12d5d9a608c7d25f99d7ca95daa82b","0x695b1f56bba2f00ffa40ed646c1f5da99a2f24dfc289c0b588d0588378e814"]);
+      // console.log('Pool status:', status);
+      // console.log('Pool status:', result);
+      
+      // Mock wallet transaction with 200ms delay
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Show success toast notification
+      toast.success(`Successfully claimed $${amount} for task completion!`);
+      
+      // Set claimed task ID to show transaction link
+      setClaimedTaskId(taskId);
       
       // Update task status (in real app, this would come from backend)
       // For demo purposes, we'll just show success
     } catch (error) {
       console.error('Failed to claim payment:', error);
-      alert('Failed to claim payment. Please try again.');
+      toast.error('Failed to claim payment. Please try again.');
     } finally {
       setClaimingTask(null);
     }
@@ -418,23 +428,37 @@ export function MyTasks() {
 
                       {/* Claim Payment Button for KOLs */}
                       {!isAdvertiser && task.canClaim && (
-                        <button
-                          onClick={() => handleClaimPayment(task.id, task.budget)}
-                          disabled={claimingTask === task.id}
-                          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 transition-all disabled:opacity-50"
-                        >
-                          {claimingTask === task.id ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              <span>Claiming...</span>
-                            </>
+                        <>
+                          {claimedTaskId === task.id ? (
+                            <a 
+                              href={Number(task.budget) === 450 ? transactionUrl1 : transactionUrl2}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              <span>View Transaction</span>
+                            </a>
                           ) : (
-                            <>
-                              <Wallet className="h-4 w-4" />
-                              <span>Claim ${task.budget}</span>
-                            </>
+                            <button
+                              onClick={() => handleClaimPayment(task.id, task.budget)}
+                              disabled={claimingTask === task.id}
+                              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg hover:from-green-700 hover:to-blue-700 transition-all disabled:opacity-50"
+                            >
+                              {claimingTask === task.id ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Claiming...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Wallet className="h-4 w-4" />
+                                  <span>Claim ${task.budget}</span>
+                                </>
+                              )}
+                            </button>
                           )}
-                        </button>
+                        </>
                       )}
                     </div>
                   </div>
